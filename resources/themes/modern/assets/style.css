@@ -1,0 +1,11 @@
+/*!
+ * Use Bootstrap v5.3
+ * Use Bootstrap Icons v1.11.0
+ */
+@import url('bootstrap/css/bootstrap.css');
+@import url('bootstrap/css/bootstrap-grid.css');
+@import url('bootstrap/css/bootstrap-reboot.css');
+@import url('bootstrap/css/bootstrap-utilities.css');
+@import url('bootstrap-icons/font/bootstrap-icons.css');
+@import url('bootstrap-icons/font/fonts/bootstrap-icons.woff');
+@import url('bootstrap-icons/font/fonts/bootstrap-icons.woff2');

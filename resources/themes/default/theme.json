@@ -1,0 +1,11 @@
+{
+    "name": "Default Theme",
+    "author": "John Doe",
+    "description": "Tema implicită pentru aplicația mea.",
+    "version": "1.0",
+    "settings": {
+        "primary_color": "#3490dc",
+        "secondary_color": "#ffed4a",
+        "layout": "sidebar-left"
+    }
+}

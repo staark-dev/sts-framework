@@ -1,0 +1,31 @@
+{
+    "name": "sts/staarkone",
+    "version": "1.0.0",
+    "type": "project",
+    "keywords": ["php", "custom", "framework"],
+    "description": "PHP Custom Framework",
+    "autoload": {
+        "exclude-from-classmap": [
+            "/Tests/", "/test/", "/tests/"
+        ],
+
+        "files": [
+
+        ],
+
+        "psr-4": {
+            "STS\\cli\\": "cli/",
+            "STS\\core\\": "core/",
+            "STS\\app\\Modules\\": "app/Modules/",
+            "STS\\app\\Controllers\\": "app/Controllers/",
+            "App\\": "app/"
+        }
+    },
+    "minimum-stability": "dev",
+    "require": {
+        "php": "^8.0"
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}

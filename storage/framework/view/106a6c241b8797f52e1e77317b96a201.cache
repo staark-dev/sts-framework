@@ -1,0 +1,128 @@
+<?php declare(strict_types=1); class_exists('STS\core\Themes\ThemeManager') or exit; ?>
+<?php
+/* Cached on 2024-08-18 16:51:40 */
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="descriptions" content=""/>
+    <!-- Bootstrap CSS & Icons -->
+    <link rel="stylesheet" href="<?=$this->getAssetPath('style.css'); ?>" />
+    <!-- Bootstrap CSS & Icons -->
+     
+    <title><?= title; ?></title>
+</head>
+<body>
+    <div class="header">
+    <div class="px-3 py-2 text-bg-dark border-bottom">
+        <div class="container">
+            <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
+                <a href="{{ route('home') }}" class="d-flex align-items-center my-2 my-lg-0 me-lg-auto text-white text-decoration-none">
+                    {{ title }}
+                </a>
+
+                <ul class="nav col-12 col-lg-auto my-2 justify-content-center my-md-0 text-small">
+                    <li>
+                        <a href="/" class="nav-link text-secondary">
+                            <i class="bi bi-house-door d-block mx-auto mb-1" style="width: 24px; height: 24px; font-size: 24px;"></i>
+                            Home
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="#" class="nav-link text-white">
+                            <i class="bi bi-speedometer2 d-block mx-auto mb-1" style="width: 24px; height: 24px; font-size: 24px;"></i>
+                            Pricing
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="/users" class="nav-link text-white">
+                            <i class="bi bi-person-circle d-block mx-auto mb-1" style="width: 24px; height: 24px; font-size: 24px;"></i>
+                            Customers
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="#faq" class="nav-link text-white">
+                            <i class="bi bi-question-circle-fill d-block mx-auto mb-1" style="width: 24px; height: 24px; font-size: 24px;"></i>
+                            FAQs
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#calendar" class="nav-link text-white">
+                            <i class="bi bi-calendar-event d-block mx-auto mb-1" style="width: 24px; height: 24px; font-size: 24px;"></i>
+                            Calendar
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="px-3 py-2 border-bottom mb-3">
+        <div class="container d-flex flex-wrap justify-content-center">
+            <form class="w-50 me-3 col-12 col-lg-auto mb-2 mb-lg-0 me-lg-auto" role="search">
+                <input type="search" class="form-control" placeholder="Search..." aria-label="Search">
+            </form>
+            <div class="text-end">
+                
+                <a href="{{ url('/auth/login') }} " class="btn btn-light text-dark me-2">Login</a>
+                <a href="{{ url('/auth/signup') }}" class="btn btn-primary">Sign-up</a>
+                
+                <div class="flex-shrink-0 dropdown">
+                    <a href="#" class="d-block link-body-emphasis text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        
+                        <img src="https://github.com/mdo.png" alt="mdo" width="32" height="32" class="rounded-circle">
+                    </a>
+
+                    <ul class="dropdown-menu text-small shadow" style="">
+                        <li><a class="dropdown-item" href="#">Inbox</a></li>
+                        <li><a class="dropdown-item" href="{{ userlink }}/settings">Settings</a></li>
+                        <li><a class="dropdown-item" href="{{ userlink }}">Profile</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="'{{ url('/auth/logout') }}">Sign out</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+    <div class="container-fluid container">
+        
+    <div class="row d-flex justify-content-center">
+        <div class="col-4 d-flex col-lg-12 col-md-8 col-sm-6">
+            Left Side
+        </div>
+        <div class="col-8 d-flex col-lg-12 col-md-8 col-sm-6">
+            Right side
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <h5 style="color: blue;">Welcome to my website !</h5>
+            <h2>Welcome to My Website</h2>
+            <p>This is the homepage.</p>
+        </div>
+    </div>
+
+    </div>
+    <script src="<?=assets_path(); ?>/bootstrap/js/bootstrap.min.js"></script>
+<script src="<?=assets_path(); ?>/bootstrap/js/bootstrap.min.js.map"></script>
+
+<div class="container-fluid ">
+    <footer class="py-3 my-4 text-white">
+        <ul class="nav justify-content-center border-bottom pb-3 mb-3 text-white">
+            <li class="nav-item"><a href="#" class="nav-link px-2 text-body-secondary">Home</a></li>
+            <li class="nav-item"><a href="#" class="nav-link px-2 text-body-secondary">Features</a></li>
+            <li class="nav-item"><a href="#" class="nav-link px-2 text-body-secondary">Pricing</a></li>
+            <li class="nav-item"><a href="#" class="nav-link px-2 text-body-secondary">FAQs</a></li>
+            <li class="nav-item"><a href="#" class="nav-link px-2 text-body-secondary">About</a></li>
+        </ul>
+        <p class="text-center text-body-secondary">&copy; 2024 STS-Solutions. All rights reserved.</p>
+    </footer>
+</div>
+</body>
+</html>

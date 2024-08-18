@@ -1,0 +1,70 @@
+#!/usr/bin/env php
+<?php
+
+// Autoloading - dacă utilizezi Composer
+require_once __DIR__ . '/vendor/autoload.php';
+
+// Functii pentru stilizare
+function colorText($text, $colorCode) {
+    return "\033[" . $colorCode . "m" . $text . "\033[0m";
+}
+
+function boldText($text) {
+    return "\033[1m" . $text . "\033[0m";
+}
+
+function redText($text) {
+    return colorText($text, '31');
+}
+
+function greenText($text) {
+    return colorText($text, '32');
+}
+
+function yellowText($text) {
+    return colorText($text, '33');
+}
+
+function blueText($text) {
+    return colorText($text, '34');
+}
+
+use STS\cli\commands\{
+    GreetCommand,
+    MigrateCommand,
+    HelpCommand
+};
+
+$availableCommands = [
+    'greet' => GreetCommand::class,
+    'migrate' => MigrateCommand::class,
+    'help' => HelpCommand::class,
+];
+
+// Preluarea argumentelor din linia de comandă
+$args = $argv;
+array_shift($args); // Elimină numele scriptului
+
+if (count($args) === 0) {
+    echo redText("Te rog să specifici o comandă.\n");
+    echo greenText("Foloseste 'php soner help' pentru a vedea lista de comenzi disponibile.\n");
+    exit(1);
+}
+
+$commandName = array_shift($args);
+
+if (array_key_exists($commandName, $availableCommands)) {
+    $commandClass = $availableCommands[$commandName];
+    $command = new $commandClass();
+
+    // Dacă comanda este "help", îi trecem și lista de comenzi disponibile
+    if ($commandName === 'help') {
+        $command = new HelpCommand($availableCommands);
+    }
+
+    $command->execute($args);
+} else {
+    echo redText("Comanda '$commandName' nu a fost găsită.\n");
+    echo greenText("Foloseste 'php soner help' pentru a vedea lista de comenzi disponibile.\n");
+    exit(1);
+}

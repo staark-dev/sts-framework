@@ -1,0 +1,11 @@
+{
+    "name": "Modern Bootsrap Theme",
+    "author": "StaarK",
+    "description": "Bootstrap Custom Theme by STS [StaarK]",
+    "version": "1.0",
+    "settings": {
+        "primary_color": "#3490dc",
+        "secondary_color": "#ffed4a",
+        "layout": "sidebar-left"
+    }
+}
