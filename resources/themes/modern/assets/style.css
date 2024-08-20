@@ -9,3 +9,27 @@
 @import url('bootstrap-icons/font/bootstrap-icons.css');
 @import url('bootstrap-icons/font/fonts/bootstrap-icons.woff');
 @import url('bootstrap-icons/font/fonts/bootstrap-icons.woff2');
+@import url('https://fonts.googleapis.com/css2?family=Mulish:ital,wght@0,200..1000;1,200..1000&display=swap');
+/*!
+ *
+ *
+ */
+
+.load_app_time {
+    font-size: 13px;
+    color: #75a9ef;
+    font-weight: 700;
+}
+
+.nav .nav-link {
+    font-size: 16px;
+    font-family: 'Mulish';
+    font-weight: 400;
+}
+
+a.lgo {
+    font-size: 35px;
+    font-family: 'Mulish';
+    color: #7ab0ff;
+    text-shadow: 0 2px 3px #000;
+}

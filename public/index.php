@@ -1,9 +1,23 @@
 <?php
-define("ROOT_PATH", trim(dirname(__DIR__) . DIRECTORY_SEPARATOR, '\\/'));
-require_once ROOT_PATH . '/bootstrap/app.php';
+define('ROOT_PATH', dirname(__DIR__));
 
-use STS\core\App;
+require_once __DIR__ . '/../vendor/autoload.php';
 
-// Rulează aplicația
-$app = new App($container);
-$app->run();
+use STS\core\Container;
+use STS\core\Providers\App\AppServiceProvider;
+use STS\core\Http\HttpKernel;
+use STS\core\Http\Request;
+
+$container = Container::getInstance();
+
+$provider = new AppServiceProvider($container);
+$provider->register();
+$provider->boot();
+
+$request = Request::capture();
+
+$kernel = $container->make(HttpKernel::class);
+
+$response = $kernel->handle($request);
+
+$response->send();

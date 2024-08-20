@@ -1,15 +1,49 @@
 <?php
-namespace App\Controllers;
+namespace STS\app\Controllers;
+use STS\core\Controller;
 
-use STS\core\Database\Orm;
-use STS\core\Http\Request;
 use STS\core\Http\Response;
 use STS\core\Auth\Auth;
 use STS\core\Security\Hash;
 
-class AuthController
+class AuthController extends Controller
 {
-    protected $userOrm;
+    public function login(): void
+    {
+        $this->view('user_auth', 'Login');
+    }
+
+    public function loginHandle(): Response
+    {
+        if(app('Request')->isPost()) {
+            return new Response(app('Request')->post());
+        }
+
+        return false;
+    }
+
+    public function create(): void
+    {
+        $this->view('user_auth', 'Sign Up');
+    }
+
+    public function signupHandle(): void
+    {
+
+    }
+
+    public function profile(): void
+    {
+
+    }
+
+    public function logout(): Response
+    {
+        Auth::logout();
+        return new Response('User logged out successfully');
+    }
+
+    /*protected $userOrm;
     protected $roleOrm;
 
     public function __construct(Orm $userOrm)
@@ -49,5 +83,5 @@ class AuthController
     {
         Auth::logout();
         return new Response('User logged out successfully');
-    }
+    }*/
 }

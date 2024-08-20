@@ -11,7 +11,7 @@ class ServiceNotFoundException extends \Exception {
 namespace STS\core;
 
 final class Container implements ContainerInterface {
-    protected static ?Container $instance = null;
+    protected static ?self $instance = null;
     private array $bindings = [];
     private array $singletons = [];
     private array $instances = [];
@@ -19,15 +19,24 @@ final class Container implements ContainerInterface {
     private array $aliases = [];  // Adaugă aliasurile pentru servicii
 
     // Înregistrează un serviciu normal în container
-    public function bind($name, $resolver, $priority = 0) {
+    public function bind($name, $resolver, &$priority = 0) {
         $this->bindings[$name] = $resolver;
         $this->servicePriority[$name] = $priority;
     }
 
     // Înregistrează un serviciu ca singleton
-    public function singleton($name, $resolver, $priority = 0) {
+    /*public function singleton($name, $resolver, $priority = 0) {
         $this->singletons[$name] = $resolver;
         $this->servicePriority[$name] = $priority;
+    }*/
+    public function singleton($key, $resolver, &$priority = 0) {
+        $this->bindings[$key] = function ($container) use ($resolver) {
+            static $instance;
+            if (is_null($instance)) {
+                $instance = $resolver($container);
+            }
+            return $instance;
+        };
     }
 
     // Adaugă un alias pentru un serviciu existent
@@ -64,6 +73,18 @@ final class Container implements ContainerInterface {
         }
 
         throw new ServiceNotFoundException("Service {$name} not found in container.");
+    }
+
+    // 
+    public function register($providerClass) {
+        $provider = new $providerClass($this);
+        if (method_exists($provider, 'register')) {
+            $provider->register();
+        }
+
+        if (method_exists($provider, 'boot')) {
+            $provider->boot();
+        }
     }
 
     // Verifică dacă un serviciu este înregistrat sub un anumit nume sau alias
@@ -112,9 +133,9 @@ final class Container implements ContainerInterface {
         return array_keys($this->servicePriority);
     }
 
-    // Obține instanța singleton a containerului
-    public static function getInstance(): Container {
-        if (self::$instance === null) {
+    // Singleton pattern
+    public static function getInstance(): self {
+        if (is_null(self::$instance)) {
             self::$instance = new self();
         }
         return self::$instance;

@@ -10,7 +10,7 @@
         ],
 
         "files": [
-
+            "bootstrap/autoload.php"
         ],
 
         "psr-4": {

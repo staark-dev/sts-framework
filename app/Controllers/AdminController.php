@@ -2,9 +2,10 @@
 
 namespace STS\app\Controllers;
 
+use STS\core\Controller;
 use STS\core\Http\Response;
 
-class AdminController
+class AdminController extends Controller
 {
     public function dashboard(): Response
     {

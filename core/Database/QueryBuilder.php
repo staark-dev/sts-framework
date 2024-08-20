@@ -1,29 +1,32 @@
 <?php
-declare(strict_types=1);
+
 namespace STS\core\Database;
 
-use PDO;
-
 class QueryBuilder {
-    protected PDO $db;
+    protected ?Connection $connection;
     protected string $table;
-    protected array $select = ['*'];
-    protected array $where = [];
+    protected array $fields = ['*'];
+    protected array $conditions = [];
+    protected array $params = [];
+    protected array $joins = [];
+    protected array $relations = [];
     protected ?array $orderBy = null;
     protected ?int $limit = null;
 
-    public function __construct(PDO $db, string $table) {
-        $this->db = $db;
+    public function __construct(?Connection $connection, string $table) {
+        $this->connection = $connection;
         $this->table = $table;
     }
 
-    public function select(array $columns = ['*']): self {
-        $this->select = $columns;
+    public function select(...$fields): self {
+        $this->fields = $fields;
         return $this;
     }
 
-    public function where(string $field, string $value): self {
-        $this->where[] = [$field, $value];
+    public function where(string $field, string $operator, $value): self {
+        //$this->where[] = [$field, $operator, $value];
+        $this->conditions[] = "{$field} {$operator} ?";
+        $this->params[] = $value;
         return $this;
     }
 
@@ -37,34 +40,89 @@ class QueryBuilder {
         return $this;
     }
 
+    public function whereIn(string $field, array $values): self {
+        $placeholders = implode(',', array_fill(0, count($values), '?'));
+        $this->conditions[] = "{$field} IN ({$placeholders})";
+        $this->params = array_merge($this->params, $values);
+        return $this;
+    }
+
+    public function join(string $table, string $first, string $operator, string $second, string $type = 'INNER'): self {
+        $this->joins[] = "{$type} JOIN {$table} ON {$first} {$operator} {$second}";
+        return $this;
+    }
+
+    public function with(string $relation): self {
+        $this->relations[] = $relation;
+        return $this;
+    }
+
+    protected function buildWhereClause(): string {
+        return !empty($this->conditions) ? 'WHERE ' . implode(' AND ', $this->conditions) : '';
+    }
+
     public function get(): array {
-        $sql = $this->buildSelectQuery();
-        $stmt = $this->db->prepare($sql);
+        $sql = sprintf(
+            "SELECT %s FROM %s %s %s",
+            implode(', ', $this->fields),
+            $this->table,
+            implode(' ', $this->joins),
+            $this->buildWhereClause()
+        );
+        $results = $this->connection->query($sql, $this->params);
 
-        foreach ($this->where as $index => [$field, $value]) {
-            $stmt->bindValue(":where_{$index}", $value);
+        foreach ($results as &$result) {
+            foreach ($this->relations as $relation) {
+                // Load relationships (hasOne, hasMany, etc.)
+                $relationMethod = 'load' . ucfirst($relation);
+                if (method_exists($this, $relationMethod)) {
+                    $result[$relation] = $this->$relationMethod($result);
+                }
+            }
         }
 
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $results;
     }
 
-    protected function buildSelectQuery(): string {
-        $select = implode(',', $this->select);
-        $whereClauses = $this->buildWhereClauses();
-        $orderBy = $this->orderBy ? 'ORDER BY ' . implode(' ', $this->orderBy) : '';
-        $limit = $this->limit ? 'LIMIT ' . $this->limit : '';
-
-        return "SELECT {$select} FROM {$this->table} {$whereClauses} {$orderBy} {$limit}";
+    public function insert(array $data): bool {
+        $fields = implode(', ', array_keys($data));
+        $placeholders = implode(', ', array_fill(0, count($data), '?'));
+        $sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $this->table, $fields, $placeholders);
+        return $this->connection->execute($sql, array_values($data)) > 0;
     }
 
-    protected function buildWhereClauses(): string {
-        if (empty($this->where)) return '';
-        
-        $clauses = [];
-        foreach ($this->where as $index => [$field, $value]) {
-            $clauses[] = "{$field} = :where_{$index}";
-        }
-        return 'WHERE ' . implode(' AND ', $clauses);
+    public function update(array $data): bool {
+        $set = implode(', ', array_map(fn($key) => "{$key} = ?", array_keys($data)));
+        $sql = sprintf("UPDATE %s SET %s %s", $this->table, $set, $this->buildWhereClause());
+        $params = array_merge(array_values($data), $this->params);
+        return $this->connection->execute($sql, $params) > 0;
+    }
+
+    public function delete(): bool {
+        $sql = sprintf("DELETE FROM %s %s", $this->table, $this->buildWhereClause());
+        return $this->connection->execute($sql, $this->params) > 0;
+    }
+
+    public function paginate(int $perPage, int $currentPage): array {
+        $offset = ($currentPage - 1) * $perPage;
+        $sql = sprintf(
+            "SELECT %s FROM %s %s LIMIT %d OFFSET %d",
+            implode(', ', $this->fields),
+            $this->table,
+            $this->buildWhereClause(),
+            $perPage,
+            $offset
+        );
+        return $this->connection->query($sql, $this->params);
+    }
+
+    protected function loadHasOne(array $result, string $relatedTable, string $foreignKey, string $localKey): array {
+        $foreignValue = $result[$localKey];
+        return $this->connection->table($relatedTable)->where($foreignKey, '=', $foreignValue)->get()[0] ?? [];
+    }
+
+    protected function loadHasMany(array $result, string $relatedTable, string $foreignKey, string $localKey): array {
+        $foreignValue = $result[$localKey];
+        return $this->connection->table($relatedTable)->where($foreignKey, '=', $foreignValue)->get();
     }
 }

@@ -3,8 +3,6 @@ declare(strict_types=1);
 
 namespace STS\core\Routing;
 
-use STS\core\Container;
-
 class Route {
     protected string $method;
     protected string $uri;
@@ -20,9 +18,7 @@ class Route {
 
     public function name(string $name): self {
         $this->name = ''.$name.'';
-        $y = Container::getInstance()->make(Router::class);
-    
-        //Router::getInstance()->namedRoutes[$name] = $this;
+        Router::getInstance()->namedRoutes[$name] = $this;
         return $this;
     }
 

@@ -1,26 +1,24 @@
 <?php
-use STS\core\Routing\Router;
+$router = app('Router');
 
-Router::get('/', 'HomeController@index')->name('home');
+// Definirea rutelor
+$router->get('/', 'HomeController@index')->name('home');
 
 // Grupuri de rute cu middleware și prefix
-Router::group(['prefix' => '/admin', 'middleware' => ['AdminAuthMiddleware']], function() {
-    Router::get('/dashboard', 'AdminController@dashboard')->name('admin.dashboard');
-    Router::get('/users', 'AdminController@users')->name('admin.users');
+$router->group(['prefix' => '/admin', 'middleware' => ['AdminAuthMiddleware']], function() use ($router) {
+    $router->get('/dashboard', 'AdminController@dashboard')->name('admin.dashboard');
+    $router->get('/users', 'AdminController@users')->name('admin.users');
 });
 
-Router::get('/user/{id}', function ($id) {
-    //return new \STS\core\Http\Response("Welcome to user profile {$id} !", 200);
-    $theme = new \STS\core\Themes\ThemeManager(); //Container::getInstance()->make(ThemeManager::class);
-    $theme->assign('title', 'Welcome to user');
-
-    // Utilizează metoda view definită în HelperTrait
-    $theme->display('user');
+$router->group(['prefix' => '/auth', 'middleware' => []], function() use ($router) {
+    $router->get('/login', 'AuthController@login')->name('auth.login');
+    $router->post('/login', 'AuthController@loginHandle')->name('auth.login.handle');
+    $router->get('/signup', 'AuthController@create')->name('auth.signup');
+    $router->post('/signup', 'AuthController@signupHandle')->name('auth.signup.handle');
+    $router->get('/logout', 'AuthController@logout')->name('auth.logout');
+    $router->get('{id}/profile', 'AuthController@profile')->name('auth.profile');
 });
 
-Router::group(['prefix' => '/auth'], function() {
-    Router::get('/login', 'AdminController@dashboard')->name('auth.login');
-    Router::get('/signup', 'AdminController@users')->name('auth.signup');
-    Router::get('/logout', 'AdminController@users')->name('auth.logout');
-    Router::get('/profile', 'AdminController@users')->name('auth.profile');
-});
+$router->get('/users', function() {
+    echo "Welcome to users page !";
+})->name('users');

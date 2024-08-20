@@ -1,12 +1,9 @@
 <?php
-
 namespace STS\core\Http;
 
-use STS\core\{
-    Container,
-    Http\Request,
-    Routing\Router
-};
+use STS\core\Container;
+use STS\core\Http\Request;
+use STS\core\Http\Response;
 
 class HttpKernel {
     protected Container $container;
@@ -15,9 +12,8 @@ class HttpKernel {
         $this->container = $container;
     }
 
-    protected function loadRoutes(): void
-    {
-        // Verifică dacă fișierul există pentru a preveni erorile
+    protected function loadRoutes(): void {
+        // Verifică dacă fișierul de rute există
         $routePath = sprintf("%s/routes/web.php", ROOT_PATH);
         if (file_exists($routePath)) {
             require_once $routePath;
@@ -29,26 +25,25 @@ class HttpKernel {
     /**
      * @throws \Exception
      */
-    public function handle(Request $request): Response
-    {
+    public function handle(Request $request): Response {
         $this->loadRoutes();
-        
-        // Folosește Router-ul din container
-        $router = $this->container->make(Router::class);
+
+        // Obține Router-ul din container
+        $router = $this->container->make('Router');
 
         // Procesează cererea prin router și obține răspunsul
         $response = $router->dispatch($request);
 
-        // Dacă dispatch returnează un string, înfășoară-l într-un obiect Response
+        // Dacă răspunsul este un string, creează un obiect Response
         if (is_string($response)) {
             $response = new Response($response);
         }
 
-        // Dacă nu există un răspuns valid, generează o eroare sau un răspuns implicit
+        // Dacă nu există un răspuns valid, returnează un răspuns 404
         if ($response === null) {
             $response = new Response('Page not found', 404);
         }
-        
+
         return $response;
     }
 }

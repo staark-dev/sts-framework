@@ -2,62 +2,75 @@
 namespace STS\core\Session;
 
 use SessionHandlerInterface;
-use STS\core\Database\ORM;
+use STS\core\Database\Connection;
 
-class CustomSessionHandler implements SessionHandlerInterface {
-    private ORM $sessionOrm;
+class CustomSessionHandler implements SessionHandlerInterface
+{
+    protected Connection $connection;
+    protected string $table;
+    protected int $lifetime;
 
-    public function __construct() {
-        // Inițializăm ORM-ul pentru tabela 'sessions'
-        $this->sessionOrm = new ORM('sessions');
+    public function __construct(Connection $connection, string $table = 'sessions')
+    {
+        $this->connection = $connection;
+        $this->table = $table;
+        $this->lifetime = (int) ini_get('session.gc_maxlifetime');
     }
 
-    public function open($savePath, $sessionName): bool {
-        // Deschide sesiunea (inițializarea poate fi făcută aici dacă e nevoie)
+    public function open(string $savePath, string $sessionName): bool
+    {
         return true;
     }
 
-    public function close(): bool {
-        // Închide sesiunea
+    public function close(): bool
+    {
         return true;
     }
 
-    public function read($id): string {
-        $session = $this->sessionOrm->where('id', $id)->get();
+    public function read(string $sessionId): string
+    {
+        $sql = "SELECT data FROM {$this->table} WHERE id = :id AND last_activity > :time";
+        $stmt = $this->connection->getPdo()->prepare($sql);
+        $stmt->execute([
+            ':id' => $sessionId,
+            ':time' => time() - $this->lifetime,
+        ]);
 
-        if ($session) {
-            return $session[0]['data'];
-        }
+        $result = $stmt->fetchColumn();
 
-        return '';
+        return $result !== false ? $result : '';
     }
 
-    public function write($id, $data): bool  {
-        // Verifică dacă sesiunea există deja
-        $session = $this->sessionOrm->where('id', $id)->get();
+    public function write(string $sessionId, string $data): bool
+    {
+        $sql = "REPLACE INTO {$this->table} (id, data, last_activity) VALUES (:id, :data, :time)";
+        $stmt = $this->connection->getPdo()->prepare($sql);
 
-        if ($session) {
-            // Actualizează sesiunea existentă
-            return $this->sessionOrm->update((int)$session[0]['id'], [
-                'data' => $data,
-                'last_accessed' => date('Y-m-d H:i:s'),
-            ]);
-        } else {
-            // Creează o sesiune nouă
-            return $this->sessionOrm->create([
-                'id' => $id,
-                'data' => $data,
-                'last_accessed' => date('Y-m-d H:i:s'),
-            ]);
-        }
+        return $stmt->execute([
+            ':id' => $sessionId,
+            ':data' => $data,
+            ':time' => time(),
+        ]);
     }
 
-    public function destroy($id): bool {
-        return $this->sessionOrm->delete((int)$id);
+    public function destroy(string $sessionId): bool
+    {
+        $sql = "DELETE FROM {$this->table} WHERE id = :id";
+        $stmt = $this->connection->getPdo()->prepare($sql);
+
+        return $stmt->execute([
+            ':id' => $sessionId,
+        ]);
     }
 
-    public function gc($maxLifetime): int|false {
-        $threshold = date('Y-m-d H:i:s', time() - $maxLifetime);
-        return $this->sessionOrm->where('last_accessed', '<', $threshold)->delete();
+    public function gc(int $maxLifetime): int|false
+    {
+        $sql = "DELETE FROM {$this->table} WHERE last_activity < :time";
+        $stmt = $this->connection->getPdo()->prepare($sql);
+        $stmt->execute([
+            ':time' => time() - $maxLifetime,
+        ]);
+
+        return $stmt->rowCount();
     }
 }

@@ -58,6 +58,7 @@ return [
     */
 
     'timezone' => 'UTC',
+    'default_timezone' => 'Europe/Stockholm',
 
     /*
     |--------------------------------------------------------------------------
@@ -97,7 +98,7 @@ return [
 
 
     'theme' => [
-        'active' => env('APP_THEME', 'default'),                // Numele temei active
+        'active' => env('APP_THEME', 'modern'),                // Numele temei active
         'path' => base_path('/\resources/\themes'),            // Calea către directorul de teme
     ],
 
@@ -114,9 +115,6 @@ return [
     'providers' => [
         // \App\Providers\AppServiceProvider::class,
         // \App\Providers\EventServiceProvider::class,
-        \App\Providers\AppServiceProvider::class,
-        \App\Providers\OrmServiceProvider::class,
-        \App\Providers\SessionServiceProvider::class,
     ],
 
 ];

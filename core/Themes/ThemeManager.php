@@ -2,7 +2,8 @@
 declare(strict_types=1);
 namespace STS\core\Themes;
 
-use STS\core\Routing\Router;
+use STS\core\Themes\GlobalVariables;
+use STS\core\Helpers\FormHelper;
 
 class ThemeManager {
     protected array $themes = [];
@@ -12,48 +13,25 @@ class ThemeManager {
     protected array $variables = [];
     protected array $sections = [];
     protected ?string $extends = null;
-    protected ?string $include = null;
-    protected array $includes = [];
+    protected array $translations = [];
+    protected ?string $locale = 'en';
 
     public function __construct() {
-        $config = app()->make('config')->get('theme');
+        // Gaseste si incarca datele pentru teme !
+        $config = app('theme.config');
+
+        // Incarca configuratia pentru teme
         $this->loadThemes($config['theme_path']);
         $this->setActiveTheme($config['active_theme']);
-        $this->cachePath = null; //$config['cache_path'] ?? null;
+        $this->cachePath = $config['cache_path'];
 
-        // Adăugăm funcțiile și variabilele globale
-        $this->variables = array_merge($this->variables, [
-            'url' => fn($path = '') => url($path),
-            'session' => fn($key = null) => $key ? $_SESSION[$key] ?? null : $_SESSION,
-            'auth' => fn() => isset($_SESSION['user_id']),
-            'trans' => fn($key, $params = []) => trans($key, $params),
-            'csrf_token' => fn() => csrf_token(),
-            'title' => env('APP_NAME', 'STS Framework S-One'),
-            'app_name' => env('APP_NAME', 'STS Framework S-One'),
-            // Alte funcții globale sau variabile pot fi adăugate aici
-        ]);
+        // Încarcă traducerile pentru limba activă
+        $this->loadTranslations($this->locale);
+
+        // Inițializează variabilele globale
+        $this->variables = array_merge($this->variables, app()->make('globals')->all());
     }
 
-    protected function loadThemes(string $themePath): void {
-        foreach (glob($themePath . '/*', GLOB_ONLYDIR) as $dir) {
-            $name = basename($dir);
-            $configFile = $dir . '/theme.json';
-            if (file_exists($configFile)) {
-                $config = json_decode(file_get_contents($configFile), true);
-                $config['path'] = $dir;
-                $this->themes[$name] = $config;
-            }
-        }
-    }
-
-    public function setActiveTheme(string $themeName): void {
-        if (!isset($this->themes[$themeName])) {
-            throw new \Exception("Tema {$themeName} nu există.");
-        }
-
-        $this->activeTheme = $themeName;
-        $this->templatePath = $this->themes[$themeName]['path'] . '/views';
-    }
 
     public function assign(string $key, $value): void {
         $this->variables[$key] = $value;
@@ -66,9 +44,18 @@ class ThemeManager {
             throw new \Exception("Template-ul {$template} nu a fost găsit.");
         }
     
+        // Cache handling
+        $cachedFile = $this->getCachedFile($template);
+
+        if ($this->cachePath && $this->isCacheValid($templateFile, $cachedFile)) {
+            ob_start();
+            include $cachedFile; // Evaluăm cache-ul
+            return ob_get_clean();
+        }
+
         // Generate content if not in cache
         extract($this->variables);
-    
+
         // Read and process the template content
         $content = file_get_contents($templateFile);
     
@@ -85,17 +72,10 @@ class ThemeManager {
             $content = $this->parseIncludes($content); // Ensure this is only called once
         }
 
+        // Parse Directive and Variables
         $content = $this->parseVariables($content);
         $content = $this->parseDirectives($content);
 
-        // Cache handling
-        $cachedFile = $this->getCachedFile($template);
-        if ($this->cachePath && $this->isCacheValid($templateFile, $cachedFile)) {
-            ob_start();
-            include $cachedFile; // Evaluăm cache-ul
-            return ob_get_clean();
-        }
-    
         // Save the processed content in cache with PHP tags
         if ($this->cachePath) {
             $cacheContent = "<?php" . PHP_EOL;
@@ -111,7 +91,58 @@ class ThemeManager {
         return ob_get_clean();
     }
     
-    
+
+    public function setLocale(string $locale): void
+    {
+        if($locale === "") $this->locale = 'en';
+        $this->locale = $locale;
+    }
+
+    protected function loadTranslations(string $locale): void
+    {
+        $translationFile = ROOT_PATH . "/resources/lang/{$locale}/messages.php";
+        if (file_exists($translationFile)) {
+            $this->translations = include $translationFile;
+        } else {
+            throw new \Exception("Fișierul de traducere pentru limba {$locale} nu a fost găsit.");
+        }
+    }
+
+    public function trans(string $key, array $params = []): string
+    {
+        $translation = $this->translations[$key] ?? $key;
+
+        // Înlocuiește parametrii din traducere
+        foreach ($params as $key => $value) {
+            $translation = str_replace('{' . $key . '}', $value, $translation);
+        }
+
+        return $translation;
+    }
+
+    protected function loadThemes(string $themePath): void 
+    {
+        foreach (glob($themePath . '/*', GLOB_ONLYDIR) as $dir) {
+            $name = basename($dir);
+            $configFile = $dir . '/theme.json';
+            if (file_exists($configFile)) {
+                $config = json_decode(file_get_contents($configFile), true);
+                $config['path'] = $dir;
+                $this->themes[$name] = $config;
+            }
+        }
+    }
+
+    public function setActiveTheme(string $themeName): void 
+    {
+        if (!isset($this->themes[$themeName])) {
+            throw new \Exception("Tema {$themeName} nu există.");
+        }
+
+        $this->activeTheme = $themeName;
+        $this->templatePath = $this->themes[$themeName]['path'] . '/template';
+    }
+
     public function display(string $template): void {
         echo $this->render($template);
     }
@@ -191,19 +222,13 @@ class ThemeManager {
     }
 
     protected function parseIncludes(string $content): string {
-        // Debugging initial content
-        //var_dump($content);
-    
-        // Folosește un callback pentru a înlocui directivele @require cu conținutul fișierului inclus
         return preg_replace_callback('/@include\s*\(\s*[\'"](.+?)[\'"]\s*\)/', function ($matches) {
-            //var_dump($matches[1]);
 
             $includeFile = $this->findTemplateFile($matches[1]);
             if (!$includeFile || !file_exists($includeFile)) {
                 throw new \Exception("Fișierul de include ". $matches[1] ." nu a fost găsit.");
             }
     
-            // Citește și procesează conținutul fișierului inclus
             $includeContent = file_get_contents($includeFile);
     
             return $includeContent;
@@ -214,14 +239,33 @@ class ThemeManager {
     
     
     protected function parseVariables(string $content): string {
-    // Replace {{ theme_assets('path/to/asset') }} with the actual asset path
+        // Replace {{ theme_assets('path/to/asset') }} with the actual asset path
         $content = preg_replace_callback('/\{\{\s*theme_assets\(\s*[\'"](.+?)[\'"]\s*\)\s*\}\}/', function ($matches) {
             return "<?php echo htmlspecialchars('{$this->getAssetPath($matches[1])}', ENT_QUOTES, 'UTF-8'); ?>";
+        }, $content);
+
+        // Replace {{ trans('key') }} with the actual translation
+        $content = preg_replace_callback('/\{\{\s*trans\(\s*[\'"](.+?)[\'"]\s*(?:,\s*(\{.*?\}))?\s*\)\s*\}\}/', function ($matches) {
+            $key = $matches[1];
+            $params = isset($matches[2]) ? json_decode($matches[2], true) : [];
+            return '<?= $this->trans(\'' . $key . '\', ' . var_export($params, true) . '); ?>';
         }, $content);
 
         // Replace {{ variable }} or {{ function_name(arguments) }} with the corresponding PHP code
         $content = preg_replace_callback('/\{\{\s*(.+?)\s*\}\}/', function ($matches) {
             $variable = trim($matches[1]);
+
+            // Verifică dacă variabila este definită în array-ul de variabile
+            if (array_key_exists($variable, $this->variables)) {
+                return '<?=$this->variables[\'' . $variable . '\'];?>';
+            }
+
+            // Verifică dacă este o variabilă globală
+            $globals = app('globals');
+            if ($value = $globals->get($variable)) {
+                //var_dump($globals->get($variable) ?? $value);
+                return $value ?? '';
+            }
 
             // Verificăm dacă expresia este o funcție definită în variabile
             if (preg_match('/^([a-zA-Z_][a-zA-Z0-9_]*)\s*\((.*)\)$/', $variable, $funcMatches)) {
@@ -253,6 +297,9 @@ class ThemeManager {
             // Dacă ajungem aici, ceva nu este în regulă, returnăm expresia brută
             return "<?=$expression; ?>";
         }, $content);
+
+        // Other variable replacements...
+        $content = preg_replace('/\{\{\s*(.+?)\s*\}\}/', '<?=$$1;?>', $content);
 
         return $content;
     }

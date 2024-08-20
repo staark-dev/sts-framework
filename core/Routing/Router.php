@@ -4,20 +4,20 @@ namespace STS\core\Routing;
 
 use STS\core\Http\Response;
 
-final class Router {
+class Router {
     protected static ?Router $instance = null;
     protected array $routes = [];
     public array $namedRoutes = [];
     protected string $currentGroupPrefix = '';
     protected array $currentGroupMiddleware = [];
 
+    // Constructor privat pentru a preveni instanțierea directă
     private function __construct() {}
 
     public static function getInstance(): Router {
         if (self::$instance === null) {
             self::$instance = new self();
         }
-
         return self::$instance;
     }
 
@@ -210,19 +210,19 @@ final class Router {
     }
 
     /**
+     * Găsește o rută după nume și returnează URL-ul, înlocuind parametrii.
+     *
+     * @param string $name
+     * @param array $params
+     * @return string
      * @throws \Exception
      */
     public function route(string $name, array $params = []): string {
-        var_dump($this->namedRoutes);
-
         if (!isset($this->namedRoutes[$name])) {
-            throw new \Exception("No route found with the name $name");
+            throw new \Exception("No route found with the name '$name'");
         }
     
-        // Obținem ruta înregistrată
         $route = $this->namedRoutes[$name];
-    
-        // Obținem URI-ul rutei
         $uri = $route->getUri();
     
         // Înlocuim parametrii în URI dacă este cazul
