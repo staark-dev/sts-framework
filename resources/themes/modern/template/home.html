@@ -1,0 +1,15 @@
+@extends('layout')
+
+@section('content')
+<div class="container">
+    <h1>{{ trans('welcome') }}</h1>
+    @auth
+        <p>You are logged in as {{ auth() ?: 'Guest' }}.</p>
+    @endauth
+    
+    @guest
+        <p>You are logged in as {{ auth() ?: 'Guest' }}.</p>
+        <p>Please <a href="{{ route('auth.login') }}">log in</a>.</p>
+    @endguest
+</div>
+@endsection
