@@ -24,12 +24,14 @@ class AuthController extends Controller
 
     public function create(): void
     {
-        $this->view('user_auth', 'Sign Up');
+        $this->view('auth/register', 'Register');
     }
 
-    public function signupHandle(): void
+    public function signupHandle(): Response
     {
-
+        if(app('Request')->isPost()) {
+            return new Response(print_r(app('Request')->post()));
+        }
     }
 
     public function profile(): void
@@ -40,7 +42,7 @@ class AuthController extends Controller
     public function logout(): Response
     {
         Auth::logout();
-        return new Response('User logged out successfully');
+        return new Response('User logged out successfully', 200);
     }
 
     /*protected $userOrm;

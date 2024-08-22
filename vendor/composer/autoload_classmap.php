@@ -52,6 +52,7 @@ return array(
     'STS\\core\\Routing\\Route' => $baseDir . '/core/Routing/Route.php',
     'STS\\core\\Routing\\Router' => $baseDir . '/core/Routing/Router.php',
     'STS\\core\\Security\\Hash' => $baseDir . '/core/Security/Hash.php',
+    'STS\\core\\Security\\Validator' => $baseDir . '/core/Security/Validator.php',
     'STS\\core\\Session\\CustomSessionHandler' => $baseDir . '/core/Session/CustomSessionHandler.php',
     'STS\\core\\Session\\FlashMessage' => $baseDir . '/core/Session/FlashMessage.php',
     'STS\\core\\Session\\SessionException' => $baseDir . '/core/Session/SessionException.php',

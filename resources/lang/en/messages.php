@@ -12,4 +12,10 @@ return [
     'login_form_pass' => 'Password',
     'login_form_btn' => 'Sign In',
     'logged' => 'Your are logged as %s',
+
+    'register' => 'Registration Information',
+    'register.required' => 'Items marked with a * are required.',
+    'register.user' => 'Username : *',
+    'register.email' => 'E-mail address : *',
+    'register.password' => 'Password : *',
 ];

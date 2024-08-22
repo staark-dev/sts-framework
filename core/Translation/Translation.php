@@ -18,6 +18,7 @@ class Translation {
     }
 
     public function translate($key) {
+        var_dump($key);
         return $this->translations[$key] ?? $key;
     }
 }

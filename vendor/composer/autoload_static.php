@@ -94,6 +94,7 @@ class ComposerStaticInit93aac646e888c9f092cf694ccde7a667
         'STS\\core\\Routing\\Route' => __DIR__ . '/../..' . '/core/Routing/Route.php',
         'STS\\core\\Routing\\Router' => __DIR__ . '/../..' . '/core/Routing/Router.php',
         'STS\\core\\Security\\Hash' => __DIR__ . '/../..' . '/core/Security/Hash.php',
+        'STS\\core\\Security\\Validator' => __DIR__ . '/../..' . '/core/Security/Validator.php',
         'STS\\core\\Session\\CustomSessionHandler' => __DIR__ . '/../..' . '/core/Session/CustomSessionHandler.php',
         'STS\\core\\Session\\FlashMessage' => __DIR__ . '/../..' . '/core/Session/FlashMessage.php',
         'STS\\core\\Session\\SessionException' => __DIR__ . '/../..' . '/core/Session/SessionException.php',

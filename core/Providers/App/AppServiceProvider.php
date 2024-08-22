@@ -15,8 +15,8 @@ use STS\core\Helpers\FormHelper;
 class AppServiceProvider extends ServiceProvider
 {
     protected ?Container $container;
-    protected ?float $starttime;
-    protected ?float $endtime;
+    protected $starttime;
+    protected $endtime;
 
     public function __construct(Container $container) {
         $this->container = $container;
@@ -97,10 +97,45 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $config = $this->container->make('config');
+
+        if(is_array($config['providers']) && !empty($config['providers'])) {
+            // Incarcare provideri din aplicatie !
+            // Încărcarea providerilor definiți în `config/app.php`
+
+            foreach ($config['providers'] as $providerClass) {
+                try {
+                    if (class_exists($providerClass) && method_exists($providerClass, 'register')) {
+                        $providerClass::register($this->container);
+                    }
+                } catch (\Exception $e) {
+                    // Loghează eroarea sau aruncă o excepție
+                    throw new \Exception("Eroare la înregistrarea providerului: " . $providerClass);
+                    error_log("Eroare la înregistrarea providerului: " . $providerClass);
+                }
+            }
+        }
+
+        if($config['env'] === "dev" && $config['debug'] !== false && $config['url'] !== "localhost")
+        {
+            ini_set('display_errors', 1);
+            ini_set('display_startup_errors', 1);
+            error_reporting(E_ALL);
+        }
+
+        if($config['env'] === "production")
+        {
+            // TODO: Production
+        }
+
+
+
+        // Incarcare variabile si date din .env
+        load_env();
+
+        // Start sessiune si handler
         session_set_save_handler($this->container->make('session.handler'), true);
         session_start();
-
-        $config = $this->container->make('config');
 
         date_default_timezone_set($config['default_timezone']);
         locale_set_default($config['locale']);

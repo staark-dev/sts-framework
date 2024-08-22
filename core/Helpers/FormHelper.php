@@ -1,10 +1,17 @@
 <?php
 namespace STS\core\Helpers;
 
-use STS\core\Database\Orm;
+use STS\core\Security\Validator;
 
 class FormHelper
 {
+    protected Validator $validator;
+
+    public function __construct()
+    {
+        $this->validator = new Validator();
+    }
+
     /**
      * Generează un tag <form> de început.
      *
@@ -43,10 +50,10 @@ class FormHelper
         $errorMessage = $this->getError($name);
         //  . ($errorMessage ? "<div class=\"invalid-feedback\">{$errorMessage}</div>" : '')
         
-        return sprintf('<input %s>', $attributesString);
+        //return sprintf('<input %s>', $attributesString);
 
-        //return "<input type=\"{$type}\" name=\"{$name}\" {$valueAttr} {$attrs} class=\"{$errorClass}\" />"
-               //. ($errorMessage ? "<div class=\"invalid-feedback\">{$errorMessage}</div>" : '');
+        return "<input type=\"{$type}\" name=\"{$name}\" {$valueAttr} {$attrs} class=\"{$errorClass}\" />"
+               . ($errorMessage ? "<div class=\"invalid-feedback\">{$errorMessage}</div>" : '');
     }
 
     protected function getValue(string $name)
