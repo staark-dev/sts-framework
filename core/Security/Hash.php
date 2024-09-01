@@ -15,9 +15,11 @@ class Hash
      * @param string $data
      * @return string
      */
-    public static function make(string $data): string
+    public static function make(string $data, array $options = []): string
     {
+        // Combină opțiunile implicite cu cele personalizate
         $options = array_merge(self::$defaultOptions, $options);
+        
         return password_hash($data, self::$algorithm, $options);
     }
 

@@ -2,6 +2,7 @@
 namespace STS\core\Helpers;
 
 use STS\core\Security\Validator;
+use STS\core\Http\Request;
 
 class FormHelper
 {
@@ -9,7 +10,7 @@ class FormHelper
 
     public function __construct()
     {
-        $this->validator = new Validator();
+        $this->validator = new Validator(Request::collection());
     }
 
     /**

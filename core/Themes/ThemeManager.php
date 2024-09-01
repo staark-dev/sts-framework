@@ -7,6 +7,7 @@ use STS\core\Helpers\FormHelper;
 use STS\core\Facades\Theme;
 use STS\core\Facades\Globals;
 use STS\core\Facades\Translate;
+use STS\core\Facades\Auth;
 
 class ThemeManager {
     # Theme Path
@@ -199,7 +200,9 @@ class ThemeManager {
         $this->setThemeLayout($this->themes[$themeName]['layouts']);
     }
 
-    public function display(string $template): void {
+    public function display(string $template, array $data = []): void {
+        extract($data);
+        $this->variables = array_merge($this->variables, $data);
         echo $this->render($template);
     }
 
@@ -323,10 +326,16 @@ class ThemeManager {
 
                 // Construiește apelul metodei trans
                 return '<?= $this->__(\'' . addslashes($key) . '\', ' . var_export($params, true) . '); ?>';
-            },
-            $content
-        );
+            }, $content);
 
+        $content = preg_replace_callback('/\{\{\s*([\w\\\]+)::([\w]+)\((.*?)\)\s*\}\}/', function ($matches) {
+            $class = $matches[1]; // Extragerea numelui clasei, ex: 'Auth'
+            $method = $matches[2]; // Extragerea numelui metodei, ex: 'check'
+            $params = $matches[3]; // Extragerea parametrilor funcției
+
+            // Construiește apelul funcției folosind call_user_func_array
+            return '<?= call_user_func_array([\STS\core\Facades\\' . $class . '::class, \'' . $method . '\'], [' . $params . ']); ?>';
+        }, $content);
 
         // Replace {{ variable }} or {{ function_name(arguments) }} with the corresponding PHP code
         $content = preg_replace_callback('/\{\{\s*(.+?)\s*\}\}/', function ($matches) {
@@ -382,33 +391,60 @@ class ThemeManager {
     
     protected function parseDirectives(string $content): string {
         $directives = [
-            '/@if\s*\((.+?)\)/' => '<?php if ($1): ?>',
-            '/@elseif\s*\((.+?)\)/' => '<?php elseif($1): ?>',
+            // Regex pentru @if, @elseif, @else și @endif
+            '/@if\s*\((.+)\)/' => '<?php if ($1): ?>',
+            '/@elseif\s*\((.+)\)/' => '<?php elseif ($1): ?>',
             '/@else/' => '<?php else: ?>',
             '/@endif/' => '<?php endif; ?>',
-            '/@foreach\s*\((.+?)\)/' => '<?php foreach ($1 as $key => $value): ?>',
+    
+            // Folosește un callback pentru @foreach și @endforeach
+            '/@foreach\s*\((\$\w+)\s+as\s*(\$\w+)(?:\s*=>\s*(\$\w+))?\)/' => function ($matches) {
+                return '<?php foreach (' . $matches[1] . ' as ' . $matches[2] . (isset($matches[3]) ? ' => ' . $matches[3] : '') . '): ?>';
+            },
             '/@endforeach/' => '<?php endforeach; ?>',
+        
+            // Regex pentru @while și @endwhile
             '/@while\s*\((.+?)\)/' => '<?php while ($1): ?>',
             '/@endwhile/' => '<?php endwhile; ?>',
+    
+            // Regex pentru @for și @endfor
             '/@for\s*\((.+?)\)/' => '<?php for ($1): ?>',
             '/@endfor/' => '<?php endfor; ?>',
+    
+            // Regex pentru @switch, @case, @default, @endswitch
             '/@switch\s*\((.+?)\)/' => '<?php switch($1): ?>',
             '/@case\s*\((.+?)\)/' => '<?php case $1: ?>',
             '/@default/' => '<?php default: ?>',
             '/@endswitch/' => '<?php endswitch; ?>',
+    
+            // Regex pentru @break și @continue
+            '/@break/' => '<?php break; ?>',
+            '/@continue/' => '<?php continue; ?>',
+    
+            // Regex pentru @auth și @endauth
             '/@auth/' => '<?php if($this->variables[\'auth\']()): ?>',
             '/@endauth/' => '<?php endif; ?>',
+    
+            // Regex pentru @guest și @endguest
             '/@guest/' => '<?php if(!$this->variables[\'auth\']()): ?>',
             '/@endguest/' => '<?php endif; ?>',
+    
+            // Regex pentru @csrf
             '/@csrf/' => '<?= \'csrf_token:\'.$this->variables[\'csrf_token\'](); ?>',
         ];
-
+    
         foreach ($directives as $pattern => $replacement) {
-            $content = preg_replace($pattern, $replacement, $content);
+            // Verifică dacă înlocuirea este un callback
+            if (is_callable($replacement)) {
+                $content = preg_replace_callback($pattern, $replacement, $content);
+            } else {
+                $content = preg_replace($pattern, $replacement, $content);
+            }
         }
-
+    
         return $content;
     }
+    
 
     public function url(string $path = ''): string {
         return "http://" . $_SERVER['HTTP_HOST'] . '/' . ltrim($path, '/');

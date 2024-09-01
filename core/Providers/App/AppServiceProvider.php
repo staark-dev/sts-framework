@@ -15,6 +15,8 @@ use STS\core\Facades\Theme;
 use STS\core\Facades\Globals;
 use STS\core\Facades\Translate;
 use STS\core\Security\Validator;
+use STS\core\Auth\AuthService;
+use STS\core\Facades\Auth;
 
 final class AppServiceProvider extends ServiceProvider
 {
@@ -43,7 +45,20 @@ final class AppServiceProvider extends ServiceProvider
         $this->registerKernel();
         $this->registerValidators();
         $this->registerHashed();
+        $this->registerAuthService();
+
+        $this->container->singleton('auth.service', function() {
+            return new \STS\core\Auth\AuthService();
+        });
     }
+
+    private function registerAuthService(): void
+    {
+        $this->container->singleton('auth', function() {
+            return new \STS\core\Auth\Auth();
+        });
+    }
+    
 
     private function registerConfig(): void
     {
@@ -125,6 +140,10 @@ final class AppServiceProvider extends ServiceProvider
 
         // Definirea unui alias pentru Request pentru a accesa obiectul de request
         $this->container->alias('session.handler', 'CustomSessionHandler');
+
+        $this->container->singleton('session.manager', function($container) {
+            return new \STS\core\Session\SessionManager();
+        });
     }
 
     private function registerRouter(): void
@@ -194,10 +213,15 @@ final class AppServiceProvider extends ServiceProvider
         load_env();
 
         // Start sessiune si handler
-        @session_set_save_handler($this->container->make('session.handler'), true);
-        @session_start();
-        @date_default_timezone_set($config['default_timezone']);
-        @locale_set_default($config['locale']);
+        // Inițializează și pornește sesiunea cu handler-ul personalizat
+        //ini_set('session.gc_maxlifetime', 3600);
+        //ini_set('session.cookie_secure', true); // Asigură-te că folosești o conexiune HTTPS
+        //ini_set('session.cookie_httponly', true); // Protejează cookie-urile împotriva atacurilor XSS
+
+        session_set_save_handler($this->container->make('session.handler'), true);
+        session_start();
+        date_default_timezone_set($config['default_timezone']);
+        locale_set_default($config['locale']);
 
         $this->endtime = microtime(true);
 
@@ -229,8 +253,10 @@ final class AppServiceProvider extends ServiceProvider
                 Translate::trans('app'), Translate::trans('app_version'), Translate::trans('app_loading_time', ['numbers' => number_format(($this->endtime - $this->starttime), 3)])
             ));
         } else {
-            // Tratament pentru cazul în care 'theme.config' nu este disponibil
+            error_log("Eroare la boot: " . $e->getMessage());
             throw new \Exception("Theme configuration not found in the container.");
         }
+
+        //Auth::loginUser();
     }
 }

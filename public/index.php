@@ -2,7 +2,6 @@
 define('ROOT_PATH', dirname(__DIR__));
 
 require_once __DIR__ . '/../vendor/autoload.php';
-
 use STS\core\Container;
 use STS\core\Providers\App\AppServiceProvider;
 use STS\core\Http\HttpKernel;

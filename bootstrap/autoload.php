@@ -174,7 +174,7 @@ if (!function_exists('auth')) {
 if (!function_exists('session')) {
     function session($key = null) {
         if ($key === null) {
-            return $_SESSION; // Returnează întregul array $_SESSION dacă nu este specificat niciun key
+            return null; // Returnează întregul array $_SESSION dacă nu este specificat niciun key
         }
 
         return $_SESSION[$key] ?? null; // Returnează valoarea cheii specificate sau null dacă nu există

@@ -5,6 +5,8 @@ use STS\core\Security\Validator;
 use STS\core\Session\SessionManager;
 use STS\core\Helpers\FormHelper;
 use STS\core\Facades\Translate;
+use STS\core\Http\Request;
+use STS\core\Facades\Auth;
 
 class GlobalVariables
 {
@@ -17,7 +19,7 @@ class GlobalVariables
     public function __construct()
     {
         $this->session = new SessionManager();
-        $this->validator = new Validator();
+        $this->validator = new Validator(Request::collection());
         $this->formHelper = new FormHelper();
 
         // Inițializează variabilele globale
@@ -29,14 +31,14 @@ class GlobalVariables
             'csrf_token' => fn() => csrf_token(),
             'auth_user' => fn() => $_SESSION['user'] ?? null,
             'base_url' => fn() => rtrim((isset($_SERVER['HTTPS']) ? "https" : "http") . "://{$_SERVER['HTTP_HOST']}", '/'),
-            'auth' => fn() => isset($_SESSION['user_id']),
+            'auth' => fn() => isset($_SESSION['logged_in']) ? $_SESSION['logged_in'] : 'Guest',
             'route' => fn($name, $params = []) => app('Router')->route($name, $params),
             'url' => fn($path = '') => url($path),
 
             // Validations, Sessions, Translate
             'trans' => fn($key, $params = []) => app('translation')->translate($key, $params),
             'add' => fn(string $key, string|array $value = []) => Translate::trans($key, $params),
-            'session' => fn($key = null) => $key ? $this->session->get($key) : $_SESSION,
+            'session' => fn($key = null) => $key ? $this->session->get($key) : null,
             'flash' => fn($key) => $this->session->getFlash($key),
             'validate' => fn($data, $rules) => $this->validator->validate($data, $rules),
             'validation_errors' => fn() => $this->validator->errors(),

@@ -16,6 +16,17 @@
                 </div>
                 <br />
     
+                @if(isset($errors) && !empty($errors)) 
+                <div class="alert alert-danger">
+                    <ul>
+                        @foreach($errors as $field => $messages)
+                            @foreach($messages as $message)
+                                <li>{{ $message }}</li>
+                            @endforeach
+                        @endforeach
+                    </ul>
+                </div>
+                @endif
                 {{ formOpen(route('auth.signup'), 'post', ['class' => 'form']) }}
     
                 <div class="row">

@@ -2,9 +2,10 @@
 
 @section('content')
 <div class="container">
-    <h1>{{ trans('welcome') }}</h1>
+    <h1>Welcome to the Starter Template System (STS)!</h1>
+
     @auth
-        <p>You are logged in as {{ auth() ?: 'Guest' }}.</p>
+        <p>You are logged in as {{ Auth::name() }}.</p>
     @endauth
     
     @guest

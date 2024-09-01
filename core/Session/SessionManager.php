@@ -4,32 +4,31 @@ namespace STS\core\Session;
 
 class SessionManager
 {
-    public function __construct()
-    {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-    }
+    public function __construct() {}
     
-    public function set(string $key, $value): void {
-        $_SESSION[$key] = $value;
+    public function set(string $key, string $value): void {
+        $_COOKIE[$key] = $value;
+    }
+
+    public function setGroup(string $key, array $value): void {
+        $_COOKIE[$key] = $value;
     }
 
     public function get(string $key, $default = null) {
-        return $_SESSION[$key] ?? $default;
+        return $_COOKIE[$key] ?? $default;
     }
 
     public function remove(string $key): void {
-        unset($_SESSION[$key]);
+        unset($_COOKIE[$key]);
     }
 
     public function flash(string $key, $value): void {
-        $_SESSION['flash'][$key] = $value;
+        $_COOKIE['flash'][$key] = $value;
     }
 
     public function getFlash(string $key) {
-        $value = $_SESSION['flash'][$key] ?? null;
-        unset($_SESSION['flash'][$key]);
+        $value = $_COOKIE['flash'][$key] ?? null;
+        unset($_COOKIE['flash'][$key]);
         return $value;
     }
 }

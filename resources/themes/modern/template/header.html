@@ -12,27 +12,10 @@
                             Home
                         </a>
                     </li>
-
-                    <li>
-                        <a href="#" class="nav-link display-6 text-white">
-                            Pricing
-                        </a>
-                    </li>
-
+                    
                     <li>
                         <a href="{{ route('users') }}" class="nav-link display-6 text-white">
                             Customers
-                        </a>
-                    </li>
-
-                    <li>
-                        <a href="#faq" class="nav-link display-6 text-white">
-                            FAQs
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#calendar" class="nav-link display-6 text-white">
-                            Calendar
                         </a>
                     </li>
                 </ul>
@@ -54,15 +37,15 @@
                 @auth
                 <div class="flex-shrink-0 dropdown">
                     <a href="#" class="d-block link-body-emphasis text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                        <img src="https://github.com/mdo.png" alt="mdo" width="32" height="32" class="rounded-circle">
+                        <img src="https://github.com/mdo.png" alt="mdo" width="32" height="32" class="rounded-circle"> &nbsp;&nbsp;{{ Auth::name() }}
                     </a>
 
                     <ul class="dropdown-menu text-small shadow">
                         <li><a class="dropdown-item" href="{{ url('/auth/inbox') }}">Inbox</a></li>
                         <li><a class="dropdown-item" href="{{ url('/auth/settings') }}">Settings</a></li>
-                        <li><a class="dropdown-item" href="{{ route('auth.profile', ['id' => '1']) }}">Profile</a></li>
+                        <li><a class="dropdown-item" href="{{ route('auth.profile', ['id' => session('user_id')]) }}">Profile</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="'{{ route('auth.logout') }}">Sign out</a></li>
+                        <li><a class="dropdown-item" href="{{ route('auth.logout') }}">Sign out</a></li>
                     </ul>
                 </div>
                 @endauth

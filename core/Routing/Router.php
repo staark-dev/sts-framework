@@ -322,7 +322,8 @@ class Router {
      * @return string
      * @throws \Exception
      */
-    public function route(string $name, array $params = []): string {
+
+     public function route(string $name, array $params = []): string {
         if (!isset($this->namedRoutes[$name])) {
             throw new \Exception("No route found with the name '$name'");
         }
@@ -332,7 +333,7 @@ class Router {
     
         // Înlocuim parametrii în URI dacă este cazul
         foreach ($params as $key => $value) {
-            $uri = str_replace("{{$key}}", $value, $uri);
+            $uri = str_replace("{{$key}}", (string) $value, $uri); // Convertește $value la string
         }
     
         // Returnăm URI-ul ca string

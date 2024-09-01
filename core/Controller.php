@@ -17,12 +17,18 @@ abstract class Controller {
         $this->router->middleware($middleware);
     }
 
-    public function view(string $view, ?string $title = '')
+    public function view(string $template, ?string $title = '', ?array $errors = []): mixed
     {
         if(!empty($title))
             Globals::set('page_title', Globals::get('page_title') . ' - ' . $title);
 
         Globals::set('app_name', env('APP_NAME', 'STS Framework'));
-        return Theme::display($view);
+
+        $data = [
+            'title' => $title,
+            'errors' => $errors, // Transmite erorile către view
+        ];
+
+        return Theme::display($template, $data);
     }
 }

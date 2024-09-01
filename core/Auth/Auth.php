@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace STS\core\Auth;
 
+use STS\core\Facades\Database;
+
 class Auth
 {
     public static function login(int $userId)

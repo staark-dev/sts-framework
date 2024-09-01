@@ -27,12 +27,21 @@ class QueryBuilder {
         return $this;
     }
 
-    public function where(string $field, string $operator, $value): self {
-        $this->conditions[] = "{$field} {$operator} ?";
+    public function where(string $field, string $operator, $value, string $boolean = 'AND'): self {
+        // Construiește condiția SQL
+        $condition = (count($this->conditions) > 0 ? " {$boolean} " : '') . "{$field} {$operator} ?";
+    
+        $this->conditions[] = $condition;
         $this->params[] = $value;
+        
         return $this;
     }
-
+    
+    public function orWhere(string $field, string $operator, $value): self {
+        // Apelează metoda where cu booleanul 'OR'
+        return $this->where($field, $operator, $value, 'OR');
+    }
+    
     public function orderBy(string $field, string $direction = 'ASC'): self {
         $this->orderBy = [$field, $direction];
         return $this;
@@ -61,7 +70,22 @@ class QueryBuilder {
     }
 
     protected function buildWhereClause(): string {
-        return !empty($this->conditions) ? 'WHERE ' . implode(' AND ', $this->conditions) : '';
+        $whereClause = !empty($this->conditions) ? 'WHERE ' . implode(' ', $this->conditions) : '';
+        return $whereClause;
+    }
+
+    public function toSql(): string {
+        $sql = sprintf(
+            "SELECT %s FROM %s %s %s %s %s",
+            implode(', ', $this->fields),
+            $this->table,
+            implode(' ', $this->joins),
+            $this->buildWhereClause(),
+            $this->buildOrderByClause(),
+            $this->buildLimitClause()
+        );
+    
+        return $sql;
     }
 
     public function get(): array {
@@ -75,18 +99,42 @@ class QueryBuilder {
             $this->buildLimitClause()
         );
         
-        $results = $this->connection->query($sql, $this->params);
+        try {
+            $results = $this->connection->query($sql, $this->params);
+        } catch (\Exception $e) {
+            // Loghează eroarea sau gestionează excepția
+            return []; // Returnează un array gol în caz de eroare
+        }
+    
+        if (empty($results)) {
+            return $results; // Întoarce un array gol dacă nu există rezultate
+        }
     
         foreach ($results as &$result) {
             foreach ($this->relations as $relation) {
                 $relationMethod = 'load' . ucfirst($relation);
                 if (method_exists($this, $relationMethod)) {
                     $result[$relation] = $this->$relationMethod($result);
+                } else {
+                    // Poți adăuga un mesaj de eroare sau un log dacă metoda relației nu este găsită
                 }
             }
         }
     
         return $results;
+    }
+
+    public function whereGroup(callable $callback, string $boolean = 'AND'): self {
+        // Deschide un grup de condiții
+        $this->conditions[] = count($this->conditions) > 0 ? " {$boolean} (" : '(';
+        
+        // Apelează callback-ul, permițând adăugarea de condiții în grup
+        $callback($this);
+    
+        // Închide grupul de condiții
+        $this->conditions[] = ')';
+        
+        return $this;
     }
     
     protected function buildOrderByClause(): string {

@@ -4,6 +4,7 @@ namespace STS\core\Security;
 use Closure;
 use STS\core\Security\ValidationResult;
 use STS\core\Facades\Database;
+use STS\core\Http\Request;
 
 class Validator {
     protected array $errors = [];
@@ -17,7 +18,9 @@ class Validator {
 
     protected array $data = [];
 
-    public function __construct() {}
+    public function __construct(?Request $request) {
+        $this->data = $request->post() ?? [];
+    }
     
     public function validate(array $data, array $rules): ValidationResult
     {
@@ -39,13 +42,13 @@ class Validator {
         foreach ($rules as $field => $ruleSet) {
             if (strpos($field, '.') !== false) {
                 $keys = explode('.', $field);
-                $value = $data;
+                $value = $this->data;
                 foreach ($keys as $key) {
                     $value = $value[$key] ?? null;
                 }
                 $this->applyRules($value, $ruleSet, $field);
             } else {
-                $this->applyRules($data[$field] ?? null, $ruleSet, $field);
+                $this->applyRules($this->data[$field] ?? null, $ruleSet, $field);
             }
         }
     }
@@ -70,22 +73,64 @@ class Validator {
                 return filter_var($value, FILTER_VALIDATE_URL) !== false;
             case 'numeric':
                 return is_numeric($value);
+            case 'string':
+                return is_string($value);
             case 'between':
                 [$min, $max] = explode(',', $param);
                 return $value >= $min && $value <= $max;
             case 'unique':
                 return $this->isUnique($field, $value, $param);
             case 'required_if':
-                [$otherField, $otherValue] = explode(',', $param);
-                return ($this->data[$otherField] ?? null) == $otherValue ? !empty($value) : true;
+                return $this->validateRequiredIf($value, $param, $field);
             case 'greater_than':
                 return $value > $this->data[$param];
             case 'less_than':
                 return $value < $this->data[$param];
             // Adaugă alte reguli de validare aici
+            case 'same':
+                return $this->validateSame($value, $param, $field);
+            case 'accepted':
+                return $this->validateAccepted($value, $field);
+            case 'csrf_token':
+                return $this->validateCsrfToken($value);
             default:
                 return true;
         }
+    }
+
+    private function validateSame($value, $param, string $field): bool|string {
+        // Verifică dacă parametrul $param (numele celuilalt câmp) există în datele furnizate
+        if (!isset($this->data[$param])) {
+            return "The field $param does not exist in the provided data.";
+        }
+   
+        return ($value === $this->data[$param]);
+    }
+
+    
+    private function validateRequiredIf($value, $param, string $field): bool|string {
+        if (strpos($param, ',') === false) {
+            return "Invalid parameter format for required_if rule. Expected format: 'otherField,otherValue'.";
+        }
+    
+        // Împarte parametrul în două părți
+        [$otherField, $otherValue] = explode(',', $param, 2);
+    
+        // Verifică dacă câmpul `otherField` are valoarea `otherValue` și dacă câmpul curent `$field` nu este gol
+        if (($this->data[$otherField] ?? null) == $otherValue && empty($value)) {
+            return "The $field field is required when $otherField is $otherValue.";
+        }
+    
+        return true;
+    }    
+
+    private function validateAccepted($value, string $field): bool|string {
+        return in_array($value, [true, '1', 1, 'on', 'yes'], true) ? true : "You must accept the $field.";
+    }
+
+    private function validateCsrfToken($value): bool|string {
+        $sessionToken = $_SESSION['csrf_token'] ?? '';
+        return hash_equals($sessionToken, $value) ? true : "Invalid CSRF token.";
     }
 
     protected function isUnique(string $field, $value, string $param): bool {
