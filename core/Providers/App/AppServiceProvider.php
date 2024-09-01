@@ -11,88 +11,129 @@ use STS\core\Themes\ThemeManager;
 use STS\core\Translation\Translation;
 use STS\core\Themes\GlobalVariables;
 use STS\core\Helpers\FormHelper;
+use STS\core\Facades\Theme;
+use STS\core\Facades\Globals;
+use STS\core\Facades\Translate;
 
-class AppServiceProvider extends ServiceProvider
+final class AppServiceProvider extends ServiceProvider
 {
     protected ?Container $container;
     protected $starttime;
     protected $endtime;
 
     public function __construct(Container $container) {
-        $this->container = $container;
+        parent::__construct($container);
     }
 
     public function register(): void
     {
         $this->starttime = microtime(true);
 
-        // Înregistrează configuratiilor în container
+        // Înregistrează serviciile modularizate
+        $this->registerConfig();
+        $this->registerDatabase();
+        $this->registerThemes();
+        $this->registerSessions();
+
+        // Înregistrează alte servicii necesare
+        $this->registerRouter();
+        $this->registerRequest();
+        $this->registerResponse();
+        $this->registerKernel();
+    }
+
+    private function registerConfig(): void
+    {
         $this->container->singleton('config', function() {
             return require ROOT_PATH . '/config/app.php';
         });
+    }
 
+    private function registerDatabase(): void
+    {
         $this->container->singleton('db.config', function() {
             return require ROOT_PATH . '/config/database.php';
         });
 
+        // Inregistrează serviciul de baza de date in container
+        $this->container->singleton('db.connection', function($container) {
+            return \STS\core\Database\Connection::getInstance(
+                $container->make('db.config')['connections']['mysql']
+            );
+        });
+
+        // Definirea unui alias pentru un serviciu comun
+        $this->container->alias('db', 'db.connection');
+    }
+
+    private function registerThemes(): void
+    {
+        // Inregistrează configuratiile in container
         $this->container->singleton('theme.config', function() {
             return require ROOT_PATH . '/config/theme.php';
         });
 
-        // Înregistrează servicii în container
-        $this->container->singleton(Connection::class, function($container) {
-            $config = $container->make('db.config');
-            return Connection::getInstance($config['connections']['mysql']);
+        $this->container->singleton('global.vars', function() {
+            return new \STS\core\Themes\GlobalVariables();
         });
 
+        $this->container->singleton('theme.trans', function() {
+            return new \STS\core\Translation\Translation(Theme::getLocale());
+        });
+
+        // Inregistrează serviciul de baza de date in container
+        $this->container->registerClass('STS\core\Themes\ThemeManager', 10);
+        $this->container->registerClass('STS\core\Helpers\FormHelper', 25);
+
+        // Definirea unui alias pentru un serviciu comun
+        $this->container->alias('theme', 'STS\core\Themes\ThemeManager');
+        $this->container->alias('form', 'STS\core\Helpers\FormHelper');
+        $this->container->alias('global_vars', 'STS\core\Themes\GlobalVariables');
+    }
+
+    private function registerSessions(): void
+    {
+        // Inregistrează serviciul de baza de date in container
+        //$this->container->registerClass('CustomSessionHandler', 5);
+        $this->container->singleton('CustomSessionHandler', function($container) {
+            return new \STS\core\Session\CustomSessionHandler(
+                $container->make('db'),
+                'sessions'
+            );
+        });
+
+        // Definirea unui alias pentru Request pentru a accesa obiectul de request
+        $this->container->alias('session.handler', 'CustomSessionHandler');
+    }
+
+    private function registerRouter(): void
+    {
         $this->container->singleton('Router', function($container) {
-            return Router::getInstance();
+            return \STS\core\Routing\Router::getInstance();
         });
+    }
 
-        $this->container->singleton(HttpKernel::class, function($container) {
-            return new HttpKernel($container);
-        });
-        
+    private function registerRequest(): void
+    {
         $this->container->singleton('Request', function($container) {
-            return Request::capture();
-        });
-
-        // Înregistrează alte servicii necesare
-        $this->registerSessionHandler();
-        $this->registerThemeHandler();
-    }
-
-    protected function registerSessionHandler(): void {
-        $this->container->singleton('session.handler', function($container) {
-            $connection = $container->make(Connection::class);
-            return new \STS\core\Session\CustomSessionHandler($connection);
+            return STS\core\Http\Request::collection();
         });
     }
 
-    protected function registerThemeHandler(): void {
-        // Înregistrează temele
-        $this->container->singleton('theme', function ($container) {
-            return new ThemeManager();
-        });
+    private function registerResponse(): void
+    {
+        // Inregistrează serviciul de baza de date in container
+        $this->container->registerClass('STS\core\Http\Response', 5);
 
-        // Înregistrează traducerile
-        $this->container->singleton('translation', function ($container) {
-            $config = $container->make('theme.config');
-            return new Translation($config['locale']);
-        });
-
-        // Înregistrează variabilelor globale
-        $this->container->singleton('globals', function ($container) {
-            return new GlobalVariables();
-        });
-
-        $this->container->singleton('form_helper', function ($container) {
-            return new FormHelper();
-        });
+        // Definirea unui alias pentru Response pentru a accesa obiectul de response
+        $this->container->alias('http.response', 'STS\core\Http\Response');
     }
 
-    protected function registerAppProvidersHandler(): void {
-
+    private function registerKernel(): void
+    {
+        $this->container->singleton('http.kernel', function($container) {
+            return new \STS\core\Http\HttpKernel($container);
+        });
     }
 
     public function boot(): void
@@ -128,28 +169,47 @@ class AppServiceProvider extends ServiceProvider
             // TODO: Production
         }
 
-
-
         // Incarcare variabile si date din .env
         load_env();
 
         // Start sessiune si handler
-        session_set_save_handler($this->container->make('session.handler'), true);
-        session_start();
-
-        date_default_timezone_set($config['default_timezone']);
-        locale_set_default($config['locale']);
-
-        $theme = $this->container->make('theme');
-        $config = $this->container->make('theme.config');
-        $theme->assign('app_name', env('APP_NAME', 'STS Framework'));
-
-        $theme->setActiveTheme($config['active_theme']);
-        $theme->setLocale($config['locale']);
+        @session_set_save_handler($this->container->make('session.handler'), true);
+        @session_start();
+        @date_default_timezone_set($config['default_timezone']);
+        @locale_set_default($config['locale']);
 
         $this->endtime = microtime(true);
 
-        $globals = app('globals');
-        $globals->set('loading_app', "<p class='text-center load_app_time'>Your application runing. | Loaded in ". number_format(($this->endtime - $this->starttime), 3) ." secounds</p>");
+        // Setări pentru Themes
+        // Verifică dacă theme.config este înregistrat în container
+        if ($this->container->has('theme.config')) {
+            $themeConfig = $this->container->make('theme.config');
+
+            // Setări pentru Themes
+            Theme::setPath(ROOT_PATH . '/themes/' . ($themeConfig['active_theme'] ?? 'default')); // fallback la 'default'
+            Theme::setUrl(env('APP_URL', 'http://localhost:8000'));
+            Theme::setTitle(env('APP_NAME', 'STS Framework'));
+            Theme::setMetaDescription(env('APP_DESCRIPTION', 'A simple PHP framework'));
+            Theme::setKeywords(env('APP_KEYWORDS', 'PHP, framework, STS'));
+            Theme::setCopyright(env('APP_COPYRIGHT', '2022 STS Framework'));
+            Theme::setThemeLayout(env('APP_THEME_LAYOUT', 'default'));
+            Theme::setThemeLayoutPath(ROOT_PATH . '/themes/' . ($themeConfig['active_theme'] ?? 'default') . '/layouts');
+            Theme::setLocale(env('APP_LOCALE', 'en_US'));
+            Theme::setActiveTheme($themeConfig['active_theme'] ?? 'default');
+            
+            Theme::assign('app_url', env('APP_URL', 'http://localhost:8000'));
+            Globals::set('app_name', env('APP_NAME', 'STS Framework'));
+
+            Globals::set('footer_copyright', sprintf("<p class=\"text-center text-body-secondary copyright\">%s | <a href='%s'>%s</a> | <a href='%s'>%s</a></p>", 
+                Translate::trans('app_copyright'), Translate::trans('app_powered_by_link'), Translate::trans('app_powered_by', ['name' => 'STS Solutions']), Translate::trans('app_bugs_link'), Translate::trans('Report an Bug')
+            ));
+
+            Globals::set('loading_app', sprintf("<p class='text-center load_app_time'>Running %s | Version: %s | %s</p>", 
+                Translate::trans('app'), Translate::trans('app_version'), Translate::trans('app_loading_time', ['numbers' => number_format(($this->endtime - $this->starttime), 3)])
+            ));
+        } else {
+            // Tratament pentru cazul în care 'theme.config' nu este disponibil
+            throw new \Exception("Theme configuration not found in the container.");
+        }
     }
 }

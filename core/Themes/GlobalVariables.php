@@ -46,9 +46,6 @@ class GlobalVariables
             'formlabel' => fn(string $name, ?string $text = null, array $attributes = []) => $this->formHelper->label($name, $text, $attributes),
             'formbutton' => fn(string $text, array $attributes = []) => $this->formHelper->button($text, $attributes),
             'csrfToken' => fn() => $this->formHelper->csrfToken(),
-
-            //'session' => fn($key = null) => $key ? $_SESSION[$key] ?? null : $_SESSION,
-            //'url' => fn($path = '') => app()->make(Router::class)->url($path),
         ];
 
         return $this->variables;
@@ -66,6 +63,12 @@ class GlobalVariables
 
     public function set($key, $value)
     {
+        if (is_array($key)) {
+            $this->variables = array_merge($this->variables, $key);
+        } else {
+            $this->variables[$key] = $value;
+        }
+
         $this->variables[$key] = $value;
     }
 }

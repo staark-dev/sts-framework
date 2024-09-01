@@ -10,7 +10,7 @@ class AuthController extends Controller
 {
     public function login(): void
     {
-        $this->view('user_auth', 'Login');
+        $this->view('auth/login', 'Login');
     }
 
     public function loginHandle(): Response

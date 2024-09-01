@@ -18,4 +18,13 @@ return [
     'register.user' => 'Username : *',
     'register.email' => 'E-mail address : *',
     'register.password' => 'Password : *',
+
+    'app' => 'STS Framework',
+    'app_version' => 'v1.2-dev',
+    'app_copyright' => '&copy; 2024 STS-Solutions. All rights reserved.',
+    'app_powered_by' => 'Powered by :name',
+    'app_powered_by_link' => 'https://github.com/stsframework/sts-one',
+    'app_docs_link' => 'https://stsframework.github.io/docs/',
+    'app_bugs_link' => 'https://github.com/stsframework/sts-one/issues',
+    'app_loading_time' => "Loading time: :numbers seconds",
 ];

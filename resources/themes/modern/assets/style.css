@@ -33,3 +33,12 @@ a.lgo {
     color: #7ab0ff;
     text-shadow: 0 2px 3px #000;
 }
+
+.copyright {
+    font-size: 14px;
+}
+
+.copyright > a {
+    text-decoration: none;
+    color: #1977c7;
+}

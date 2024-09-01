@@ -9,6 +9,7 @@ class HttpKernel {
     protected Container $container;
 
     public function __construct(Container $container) {
+        // Inițializează proprietatea tipizată în constructor
         $this->container = $container;
     }
 
@@ -25,7 +26,7 @@ class HttpKernel {
     /**
      * @throws \Exception
      */
-    public function handle(Request $request): Response {
+    public function handle(?Request $request): Response {
         $this->loadRoutes();
 
         // Obține Router-ul din container
@@ -41,7 +42,7 @@ class HttpKernel {
 
         // Dacă nu există un răspuns valid, returnează un răspuns 404
         if ($response === null) {
-            $response = new Response('Page not found', 404);
+            $response = new Response('', 404);
         }
 
         return $response;

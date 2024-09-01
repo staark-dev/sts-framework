@@ -128,6 +128,6 @@ class Response {
         $this->sendCookies();
 
         // Trimite corpul răspunsului
-        //echo $this->body;
+        echo $this->body;
     }
 }

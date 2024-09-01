@@ -1,5 +1,6 @@
 RewriteEngine On
 
+# Setează tipurile de fișiere pentru fonturi, CSS și JS
 AddType application/font-woff woff
 AddType application/font-woff2 woff2
 AddType application/vnd.ms-fontobject eot
@@ -8,12 +9,44 @@ AddType font/otf otf
 AddType text/css .css
 AddType application/javascript .js
 
-# Permite accesul la resursele statice
-RewriteCond %{REQUEST_URI} ^/resources/
-RewriteCond %{DOCUMENT_ROOT}/../resources%{REQUEST_URI} -f
-RewriteRule ^/resources/(.*)$ ../resources/$1 [L]
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType application/font-woff "access plus 1 year"
+    ExpiresByType application/font-woff2 "access plus 1 year"
+    ExpiresByType application/vnd.ms-fontobject "access plus 1 year"
+    ExpiresByType font/ttf "access plus 1 year"
+    ExpiresByType font/otf "access plus 1 year"
+</IfModule>
 
-# Redirecționează toate celelalte cereri către index.php
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^ index.php [L]
+<IfModule mod_headers.c>
+    Header set Cache-Control "public, max-age=2592000" # 30 days
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    # Gestionează accesul la teme
+    RewriteCond %{REQUEST_URI} ^/themes/
+    RewriteCond %{DOCUMENT_ROOT}/../resources/themes/%{REQUEST_URI} -f
+    RewriteRule ^/themes/(.*)$ ../resources/themes/$1 [L]
+
+    # Permite accesul la resursele statice
+    RewriteCond %{REQUEST_URI} ^/resources/
+    RewriteCond %{DOCUMENT_ROOT}/../resources%{REQUEST_URI} -f
+    RewriteRule ^/resources/(.*)$ ../resources/$1 [L]
+
+    # Redirecționează toate celelalte cereri către index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [L]
+
+    # Prevenirea accesului direct la fișiere sensibile
+    RewriteRule ^(.*)\.(env|log|sh|bash|sql)$ - [F,L]
+
+    # Blochează accesul la directoarele ascunse (.git, .svn, etc.)
+    RewriteRule (^|/)\.(?!well-known/)(.*) - [F,L]
+</IfModule>

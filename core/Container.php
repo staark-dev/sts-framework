@@ -1,6 +1,9 @@
 <?php
 namespace STS\core;
-use ContainerInterface;
+
+use STS\core\ContainerInterface;
+use \ReflectionClass;
+use \ReflectionException;
 
 class ServiceNotFoundException extends \Exception {
     public function __construct($serviceName) {
@@ -8,134 +11,158 @@ class ServiceNotFoundException extends \Exception {
     }
 }
 
-namespace STS\core;
-
 final class Container implements ContainerInterface {
     protected static ?self $instance = null;
+    private PriorityQueue $priorityQueue;
     private array $bindings = [];
     private array $singletons = [];
     private array $instances = [];
-    private array $servicePriority = [];
-    private array $aliases = [];  // Adaugă aliasurile pentru servicii
+    private array $aliases = [];
 
-    // Înregistrează un serviciu normal în container
+    public function __construct() {
+        $this->priorityQueue = new PriorityQueue();
+    }
+
     public function bind($name, $resolver, &$priority = 0) {
         $this->bindings[$name] = $resolver;
-        $this->servicePriority[$name] = $priority;
+        $this->priorityQueue->add($name, $priority);
     }
 
-    // Înregistrează un serviciu ca singleton
-    /*public function singleton($name, $resolver, $priority = 0) {
+    public function singleton($name, $resolver, &$priority = 0) {
         $this->singletons[$name] = $resolver;
-        $this->servicePriority[$name] = $priority;
-    }*/
-    public function singleton($key, $resolver, &$priority = 0) {
-        $this->bindings[$key] = function ($container) use ($resolver) {
-            static $instance;
-            if (is_null($instance)) {
-                $instance = $resolver($container);
-            }
-            return $instance;
-        };
+        $this->priorityQueue->add($name, $priority);
     }
 
-    // Adaugă un alias pentru un serviciu existent
-    public function alias($alias, $name) {
+    // Adăugarea metodei alias
+    public function alias(string $alias, string $name): void
+    {
         $this->aliases[$alias] = $name;
     }
 
-    // Metoda make care creează sau returnează o instanță a unui serviciu
+    // Înregistrează o clasă în container cu o prioritate
+    public function registerClass(string $name, int $priority = 0): void
+    {
+        $this->bindings[$name] = function ($container) use ($name) {
+            return $container->resolve($name); // Utilizează metoda de rezolvare automată
+        };
+
+        // Adaugă clasa în PriorityQueue pentru a gestiona prioritățile
+        $this->priorityQueue->add($name, $priority);
+    }
+
+    // Metoda pentru a verifica dacă un serviciu este înregistrat în container
+    public function has(string $name): bool
+    {
+        // Verifică dacă serviciul este înregistrat ca singleton, binding sau alias
+        return isset($this->bindings[$name]) || isset($this->singletons[$name]) || isset($this->aliases[$name]) || isset($this->instances[$name]);
+    }
+
     public function make($name) {
-        // Verifică dacă numele are un alias
+        // Verifică dacă există un alias pentru serviciul solicitat
         if (isset($this->aliases[$name])) {
             $name = $this->aliases[$name];
         }
 
-        // Verifică dacă serviciul este deja instanțiat ca singleton
+        // Verifică dacă serviciul este deja o instanță singleton
         if (isset($this->instances[$name])) {
             return $this->instances[$name];
         }
 
-        // Construiește și returnează un singleton
-        if (isset($this->singletons[$name])) {
-            $this->instances[$name] = $this->build($this->singletons[$name]);
-            return $this->instances[$name];
-        }
-
-        // Construiește și returnează un serviciu obișnuit
+        // Dacă serviciul este înregistrat ca singleton sau binding
         if (isset($this->bindings[$name])) {
-            return $this->build($this->bindings[$name]);
+            $resolver = $this->bindings[$name];
+            $instance = $resolver($this);
+        } elseif (isset($this->singletons[$name])) {
+            $resolver = $this->singletons[$name];
+            $instance = $resolver($this);
+            $this->instances[$name] = $instance;
+        } else {
+            // Rezolvă automat dependențele utilizând reflecția
+            $instance = $this->resolve($name);
         }
 
-        // Dacă clasa există, încearcă să o instanțiezi automat
-        if (class_exists($name)) {
-            return $this->build($name);
-        }
-
-        throw new ServiceNotFoundException("Service {$name} not found in container.");
+        return $instance;
     }
 
-    // 
-    public function register($providerClass) {
-        $provider = new $providerClass($this);
-        if (method_exists($provider, 'register')) {
-            $provider->register();
-        }
+    private function resolve($name) {
+        try {
+            $reflection = new ReflectionClass($name);
 
-        if (method_exists($provider, 'boot')) {
-            $provider->boot();
+            // Verifică dacă clasa poate fi instanțiată
+            if (!$reflection->isInstantiable()) {
+                throw new ServiceNotFoundException("Class [$name] is not instantiable.");
+            }
+
+            $constructor = $reflection->getConstructor();
+
+            // Dacă clasa nu are constructor, creează o instanță simplă
+            if (is_null($constructor)) {
+                return new $name;
+            }
+
+            // Obține parametrii constructorului și rezolvă dependențele
+            $parameters = $constructor->getParameters();
+            $dependencies = $this->resolveDependencies($parameters);
+
+            // Creează instanța clasei cu dependențele rezolvate
+            return $reflection->newInstanceArgs($dependencies);
+
+        } catch (ReflectionException $e) {
+            throw new ServiceNotFoundException($name);
         }
     }
 
-    // Verifică dacă un serviciu este înregistrat sub un anumit nume sau alias
-    public function has($name): bool {
-        return isset($this->bindings[$name]) || isset($this->singletons[$name]) || isset($this->instances[$name]) || isset($this->aliases[$name]);
-    }
-
-    // Metoda pentru construirea efectivă a unui serviciu
-    private function build($resolver) {
-        if (is_callable($resolver)) {
-            return $resolver($this);
+    private function resolveDependencies(array $parameters) {
+        $dependencies = [];
+    
+        foreach ($parameters as $parameter) {
+            $type = $parameter->getType();
+    
+            // Verifică dacă tipul este o instanță de ReflectionNamedType și dacă este o clasă
+            if ($type && !$type->isBuiltin()) {
+                $className = $type->getName();
+                $dependencies[] = $this->make($className);
+            } else {
+                // Dacă parametrul nu are un tip de clasă, gestionează parametrii nespecificați
+                if ($parameter->isDefaultValueAvailable()) {
+                    $dependencies[] = $parameter->getDefaultValue();
+                } else {
+                    throw new \Exception("Cannot resolve the dependency [{$parameter->name}]");
+                }
+            }
         }
+    
+        return $dependencies;
+    }    
 
-        $reflector = new \ReflectionClass($resolver);
-
-        if (!$reflector->isInstantiable()) {
-            throw new ServiceNotFoundException("Class {$resolver} is not instantiable.");
-        }
-
-        $constructor = $reflector->getConstructor();
-
-        if (is_null($constructor)) {
-            return new $resolver;
-        }
-
-        $parameters = $constructor->getParameters();
+    /*private function resolveDependencies(array $parameters) {
         $dependencies = [];
 
         foreach ($parameters as $parameter) {
-            $dependencyType = $parameter->getType();
+            $dependency = $parameter->getClass();
 
-            if ($dependencyType && !$dependencyType->isBuiltin()) {
-                $dependencies[] = $this->make($dependencyType->getName());
+            if ($dependency === null) {
+                // Dacă parametrul nu are un tip de clasă, gestionează parametrii nespecificați
+                if ($parameter->isDefaultValueAvailable()) {
+                    $dependencies[] = $parameter->getDefaultValue();
+                } else {
+                    throw new \Exception("Cannot resolve the dependency [{$parameter->name}]");
+                }
             } else {
-                $dependencies[] = $parameter->isDefaultValueAvailable()
-                    ? $parameter->getDefaultValue()
-                    : null;
+                // Rezolvă automat dependența prin recursie
+                $dependencies[] = $this->make($dependency->name);
             }
         }
 
-        return $reflector->newInstanceArgs($dependencies);
-    }
+        return $dependencies;
+    }*/
 
     public function getServicesByPriority(): array {
-        arsort($this->servicePriority);
-        return array_keys($this->servicePriority);
+        return $this->priorityQueue->getSorted();
     }
 
-    // Singleton pattern
     public static function getInstance(): self {
-        if (is_null(self::$instance)) {
+        if (self::$instance === null) {
             self::$instance = new self();
         }
         return self::$instance;

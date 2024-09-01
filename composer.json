@@ -1,6 +1,6 @@
 {
     "name": "sts/staarkone",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "type": "project",
     "keywords": ["php", "custom", "framework"],
     "description": "PHP Custom Framework",

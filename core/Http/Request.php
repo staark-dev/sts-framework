@@ -21,7 +21,7 @@ class Request {
     }
 
     // Funcția statică capture pentru a inițializa clasa cu datele din cererea curentă
-    public static function capture(): self {
+    public static function collection(): self {
         $get = $_GET;
         $post = $_POST;
         $server = $_SERVER;

@@ -2,7 +2,11 @@
 declare(strict_types=1);
 namespace STS\core\Routing;
 
-use STS\core\Http\Response;
+use STS\core\Http\Response as HttpResponse;
+use STS\core\Facades\Theme;
+use STS\core\Facades\ResponseFacade as Response;
+use STS\core\Exceptions\ControllerNotFoundException;
+use STS\core\Exceptions\MethodNotFoundException;
 
 class Router {
     protected static ?Router $instance = null;
@@ -83,124 +87,221 @@ class Router {
         return $route;
     }
 
-    /**
-     * @throws \Exception
-     */
+    // Funcție pentru a gestiona resurse CSS
+    protected function handleCSSResource(string $resourceName, bool $isMinified): void {
+        echo "/*\n";
+        echo " * CSS Resource: " . str_replace(".css", "", $resourceName) . "\n";
+        echo " * Minified: " . ($isMinified ? 'Yes' : 'No') . "\n";
+        echo " */\n\r\n";
+
+        // Elimină ".min" dacă există, pentru a obține numele de bază al fișierului CSS
+        $resourceName = str_replace(".min", "", $resourceName);
+        $this->serveStaticResource($resourceName . '.css');
+    }
+
+    // Funcție pentru a gestiona resurse JS
+    protected function handleJSResource(string $resourceName, bool $isMinified): void {
+        echo "/*\n";
+        echo " * JS Resource: " . str_replace(".js", "", $resourceName) . "\n";
+        echo " * Minified: " . ($isMinified ? 'Yes' : 'No') . "\n";
+        echo " */\n\r\n";
+    
+        // Elimină ".min" dacă există, pentru a obține numele de bază al fișierului JS
+        $resourceName = str_replace(".min", "", $resourceName);
+    
+        // Asigură-te că `getThemePath` returnează calea corectă
+        $themePath = $this->getThemePath();
+        $fullPath = $themePath . $resourceName . '.js';
+
+        // Verifică dacă fișierul există și încarcăl
+        $this->serveStaticResource($fullPath);
+    }
+    
+    // Funcție pentru a gestiona resurse de fonturi
+    protected function handleFontResource(string $resourceName): void {
+        $extension = pathinfo($resourceName, PATHINFO_EXTENSION);
+
+        // Asigură-te că ai setat corect tipul MIME pentru font
+        $mimeTypes = [
+            'woff' => 'font/woff',
+            'woff2' => 'font/woff2',
+            'ttf' => 'font/ttf',
+            'otf' => 'font/otf',
+            'eot' => 'application/vnd.ms-fontobject',
+            'svg' => 'image/svg+xml'
+        ];
+
+        $mimeType = $mimeTypes[$extension] ?? 'application/octet-stream'; // Tip generic în caz de necunoscut
+        header('Content-Type: ' . $mimeType);
+        readfile($resourceName);
+        exit;
+    }
+
+    protected function getThemePath(): string {
+        // Obține configurația temei din container și construiește calea corectă
+        $themeConfig = app('theme.config');
+        return '/themes/' . $themeConfig['active_theme'] . '/assets/bootstrap/js/';
+    }
+
     public function dispatch($request) {
         $method = $request->server('REQUEST_METHOD');
-        $uri = $request->server('REQUEST_URI');
-        $uri = strtok($uri, '?');
-        
+        $uri = strtok($request->server('REQUEST_URI'), '?'); // Extrage URI-ul fără query string
+    
+        // Detectează și servește resurse statice
         if (preg_match('/([\w\-\/]+)(\.min)?\.(css|js|jpg|jpeg|png|gif|svg|woff|woff2|ttf|eot)$/i', $uri, $matches)) {
             $resourceName = $matches[1];
-            $isMinified = $matches[2] ?? '';
+            $isMinified = !empty($matches[2]); // Verifică dacă este minificat
             $extension = $matches[3];
-            
-            echo "/*!\n";
-            echo " * Resource: " . $resourceName . "\n";
-            echo " * Minified: " . ($isMinified ? 'Yes' : 'No') . "\n";
-            echo " * Extension: " . $extension . "\n";
-            echo " */\n\r\n";
-
-            $this->serveStaticResource($resourceName . $isMinified . '.' . $extension);
+    
+            if ($extension === 'js' && preg_match('/bootstrap\.(.*?)\.js$/i', $uri, $files)) {
+                $this->handleJSResource(str_replace(".js", "", $files[0]), $isMinified);
+                return;
+            }
+    
+            switch ($extension) {
+                case 'css':
+                    $this->handleCSSResource($resourceName, $isMinified);
+                    break;
+                case 'js':
+                    $this->handleJSResource($resourceName, $isMinified);
+                    break;
+                case 'woff':
+                case 'woff2':
+                case 'ttf':
+                case 'eot':
+                    $this->handleFontResource($resourceName);
+                    break;
+                default:
+                    $this->serveStaticResource($resourceName . '.' . $extension);
+                    break;
+            }
             return;
         }
-
+    
+        // Parcurge toate rutele pentru metoda specificată
         foreach ($this->routes[$method] as $route) {
-            if ($params = $this->match($route->getUri(), $uri)) {
-                // Execută middleware-urile
-                foreach ($route->getMiddleware() as $middleware) {
-                    $middlewareInstance = app()->make($middleware);
+            $params = $this->match($route->getUri(), $uri);
+            if(!$params) continue;
+            
+            // Verifică parametrii din URI ��i apelează ac��iunea controller-ului
+            if ($params !== false || strcasecmp($route->getUri(), $uri) === 0) {
+                // Execută middleware-urile asociate rutei
+                $response = $this->handleMiddlewares($route, $request);
+    
+                if ($response instanceof Response) {
+                    return $response;
+                }
+    
+                // Verifică tipul acțiunii
+                if ($route->getAction() instanceof \Closure) {
+                    // Dacă este o funcție anonimă, o execută direct
+                    return call_user_func_array($route->getAction(), [] ?? $params);
+                }
 
-                    // Apelează middleware-ul cu $request și un callback care trimite cererea către următorul middleware sau controller
-                    $response = $middlewareInstance->handle($request, function($request) use ($route) {
-                        return $this->resolveControllerAction($route->getAction(), $request);
-                    });
+                if (is_string($route->getAction()) && $params !== false) {
+                    return $this->resolveControllerAction($route->getAction(), []);
+                }
                 
-                    // Dacă un middleware returnează un răspuns, oprește execuția aici
-                    if ($response instanceof Response) {
-                        return $response;
-                    }
-                }
-
-                // Execută acțiunea rutei cu parametrii extrași
-                $action = $route->getAction();
-
-                if (is_callable($action)) {
-                    return call_user_func_array($action, $params);
-                }
-
-                if (is_string($action)) {
-                    return $this->resolveControllerAction($action, $params);
-                }
-            }
-
-            if(strcasecmp($route->getUri(), $uri) === 0) {
-                // Codul din Router.php care gestionează middlewares
-
-                foreach ($route->getMiddleware() as $middleware) {
-                    $middlewareInstance = app()->make($middleware);
-
-                    // Apelează middleware-ul cu $request și un callback care trimite cererea către următorul middleware sau controller
-                    $response = $middlewareInstance->handle($request, function($request) use ($route) {
-                        return $this->resolveControllerAction($route->getAction(), $request);
-                    });
-                
-                    // Dacă un middleware returnează un răspuns, oprește execuția aici
-                    if ($response instanceof Response) {
-                        return $response;
-                    }
-                }
-
-                // Execută acțiunea rutei cu parametrii extrași
-                $action = $route->getAction();
-
-                if (is_callable($action)) {
-                    return call_user_func_array($action, []);
-                }
-
-                if (is_string($action)) {
-                    return $this->resolveControllerAction($action, []);
+                if (is_string($route->getAction()) && $params !== true) {
+                    return $this->resolveControllerAction($route->getAction(), $params);
                 }
             }
         }
 
+        // Nu s-a găsit nicio rută; returnează 404
         return $this->handleNotFound();
     }
-
-    protected function match(string $routeUri, string $requestUri): ?array {
-        $routeUri = preg_replace('/\{([a-zA-Z0-9_]+)\}/', '(?P<$1>[a-zA-Z0-9_\-]+)', $routeUri);
-        $routeUri = '#^' . $routeUri . '$#';
-
-        if (preg_match($routeUri, $requestUri, $matches)) {
-            return array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
-        }
-
-        return null;
-    }
-
-    /**
-     * @throws \Exception
-     */
-    protected function resolveControllerAction(string $action, array $params = []) {
-        list($controller, $method) = explode('@', $action);
-
-        $controller = "STS\\app\\Controllers\\$controller";
-
-        if (class_exists($controller)) {
-            $controllerInstance = app()->make($controller);
-            if (method_exists($controllerInstance, $method)) {
-                return call_user_func_array([$controllerInstance, $method], $params);
+    
+    private function handleMiddlewares($route, $request) {
+        foreach ($route->getMiddleware() as $middleware) {
+            $middlewareInstance = app()->make($middleware);
+    
+            $response = $middlewareInstance->handle($request, function($request) use ($route) {
+                return $this->resolveControllerAction($route->getAction(), $request);
+            });
+    
+            if ($response instanceof Response) {
+                return $response;
             }
         }
+        return null;
+    }
+    
+    private function executeRouteAction($action, $params) {
+        if (is_callable($action))
+            return call_user_func_array($action, $params);
+    
+        if (is_string($action))
+            return $this->resolveControllerAction($action, $params);
 
-        throw new \Exception("Controller or method not found: $controller@$method");
+        throw new Exception("Invalid action format: $action");
+        return $this->handleNotFound();
+    }
+    
+
+    protected function cacheContent(string $content, string $cachedFile): void {
+        file_put_contents($cachedFile, $content);
+    }
+    
+    protected function loadFromCache(string $cachedFile): string {
+        return file_get_contents($cachedFile);
     }
 
+    protected function match(string $routeUri, string $requestUri): mixed {
+        // Normalizează ambele căi pentru a elimina slash-urile de la sfârșit
+        $normalizedRouteUri = rtrim($routeUri, '/');
+        $normalizedRequestUri = rtrim($requestUri, '/');
+    
+        // Compară calea rutei și cererea
+        if ($normalizedRouteUri === $normalizedRequestUri) {
+            return true; // Returnează un array gol pentru o potrivire exactă fără parametri
+        }
+    
+        // Implementare suplimentară pentru potrivirea cu parametrii dinamici (de ex., /user/{id})
+        $pattern = preg_replace('/\{[a-zA-Z]+\}/', '([^/]+)', $normalizedRouteUri);
+        if (preg_match('#^' . $pattern . '$#', $normalizedRequestUri, $matches)) {
+            return $matches;
+        }
+    
+        // Dacă nu există potrivire, returnează fals
+        return false;
+    }
+    
+    protected function resolveControllerAction(string $action, array $params = []) {
+        // Desparte acțiunea în numele controllerului și al metodei
+        list($controller, $method) = explode('@', $action);
+    
+        // Creează numele complet al clasei controllerului cu namespace
+        $controllerClass = "STS\\app\\Controllers\\$controller";
+    
+        // Verifică dacă clasa controllerului există
+        if (class_exists($controllerClass)) {
+            // Obține instanța controllerului din container (pentru a gestiona dependențele)
+            $controllerInstance = app()->make($controllerClass);
+    
+            // Verifică dacă metoda există în instanța controllerului
+            if (method_exists($controllerInstance, $method)) {
+                return call_user_func_array([$controllerInstance, $method], $params ?? []);
+            }
+    
+            // Aruncă o excepție specifică dacă metoda nu este găsită
+            if (!method_exists($controllerInstance, $method)) {
+                throw new MethodNotFoundException("Method not found: $controllerClass@$method");
+            }
+        }
+    
+        // Aruncă o excepție specifică dacă clasa controllerului nu este găsită
+        if (!class_exists($controllerClass)) {
+            throw new ControllerNotFoundException("Controller not found: $controllerClass");
+        }
+    }
+    
     protected function handleNotFound(): void
     {
-        http_response_code(404);
-        echo "404 Not Found";
+        echo Theme::render('errors/404');
+        Response::setBody("404 Not Found");
+        Response::setStatusCode(404);
+        exit;
     }
 
     protected function handleNotUrl(): void
@@ -234,28 +335,45 @@ class Router {
         return $uri;
     }
     
+    protected function serveStaticResource($filePath, $ext = []) {
+        // Construiește calea completă către resursă
+        $resourcePath = dirname(__DIR__, 2) . '/resources/' . $filePath;
 
-    // Funcție pentru a servi resurse statice
-    protected function serveStaticResource($filePath) {
-        $resourcePath = realpath(__DIR__ . '/../../resources/' . $filePath);
-    
+        // Verifică dacă fișierul există și este un fișier valid
         if (file_exists($resourcePath) && is_file($resourcePath)) {
             $mimeType = mime_content_type($resourcePath);
     
             // Asigură-te că tipul MIME este corect
             if ($mimeType === 'text/plain') {
-                if (pathinfo($resourcePath, PATHINFO_EXTENSION) === 'css') {
-                    $mimeType = 'text/css';
-                } elseif (pathinfo($resourcePath, PATHINFO_EXTENSION) === 'js') {
-                    $mimeType = 'application/javascript';
+                $extension = pathinfo($resourcePath, PATHINFO_EXTENSION);
+                switch ($extension) {
+                    case 'css':
+                        $mimeType = 'text/css';
+                        break;
+                    case 'js':
+                        $mimeType = 'application/javascript';
+                        break;
+                    case 'esm.js': // Neobișnuit, dar îl putem păstra dacă este necesar
+                        $mimeType = 'application/javascript'; // Folosește MIME corect pentru JavaScript
+                        break;
+                    default:
+                        break; // Nu face nimic pentru alte extensii
                 }
             }
     
+            // Setează antetul de tip MIME
             header('Content-Type: ' . $mimeType);
+    
+            // Adaugă antetul de cache pentru performanță
+            header("Cache-Control: public, max-age=31536000"); // Cache pentru 1 an
+            header("Expires: " . gmdate("D, d M Y H:i:s", time() + 31536000) . " GMT");
+    
+            // Servește fișierul
             readfile($resourcePath);
             exit;
         }
     
+        // Gestionează cazul în care resursa nu este găsită
         $this->handleNotFound();
     }
 

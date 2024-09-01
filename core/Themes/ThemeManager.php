@@ -4,8 +4,12 @@ namespace STS\core\Themes;
 
 use STS\core\Themes\GlobalVariables;
 use STS\core\Helpers\FormHelper;
+use STS\core\Facades\Theme;
+use STS\core\Facades\Globals;
 
 class ThemeManager {
+    # Theme Path
+    protected string $pathinfo;
     protected array $themes = [];
     protected string $activeTheme;
     protected string $templatePath;
@@ -13,7 +17,10 @@ class ThemeManager {
     protected array $variables = [];
     protected array $sections = [];
     protected ?string $extends = null;
+    protected array $blocks = [];
     protected array $translations = [];
+    protected ?string $themeLayoutPath;
+    protected ?string $themeLayout;
     protected ?string $locale = 'en';
 
     public function __construct() {
@@ -21,6 +28,7 @@ class ThemeManager {
         $config = app('theme.config');
 
         // Incarca configuratia pentru teme
+        $this->pathinfo = $config['theme_path'];
         $this->loadThemes($config['theme_path']);
         $this->setActiveTheme($config['active_theme']);
         $this->cachePath = $config['cache_path'];
@@ -29,7 +37,7 @@ class ThemeManager {
         $this->loadTranslations($this->locale);
 
         // Inițializează variabilele globale
-        $this->variables = array_merge($this->variables, app()->make('globals')->all());
+        $this->variables = array_merge($this->variables, Globals::all());
     }
 
 
@@ -98,13 +106,32 @@ class ThemeManager {
         $this->locale = $locale;
     }
 
+    public function getLocale(): string {
+        return $this->locale;
+    }
+
     protected function loadTranslations(string $locale): void
     {
-        $translationFile = ROOT_PATH . "/resources/lang/{$locale}/messages.php";
+        $this->translations = [];  // Reset the translations array;
+        $this->locale = $locale;  // Setează limba activă
+
+        $translationFile = ltrim(resources_path("/lang/{$locale}/messages.php"), '\\/');
+        
         if (file_exists($translationFile)) {
-            $this->translations = include $translationFile;
+            $this->translations = array_merge($this->translations, include $translationFile);
         } else {
-            throw new \Exception("Fișierul de traducere pentru limba {$locale} nu a fost găsit.");
+            throw new \Exception("Fisierul de traducere pentru limba {$locale} nu a fost găsit.");
+        }
+    }
+
+    public function loadThemesTranslations()
+    {
+        $translationFile = ltrim(resources_path("/lang/{$this->locale}/messages.php"), '\\/');
+
+        if (file_exists($translationFile)) {
+            return include $translationFile;
+        } else {
+            throw new \Exception("Fisierul de traducere pentru limba {$this->locale} nu a fost găsit.");
         }
     }
 
@@ -141,6 +168,7 @@ class ThemeManager {
 
         $this->activeTheme = $themeName;
         $this->templatePath = $this->themes[$themeName]['path'] . '/template';
+        $this->setThemeLayout($this->themes[$themeName]['layouts']);
     }
 
     public function display(string $template): void {
@@ -237,7 +265,6 @@ class ThemeManager {
         return $content;
     }
     
-    
     protected function parseVariables(string $content): string {
         // Replace {{ theme_assets('path/to/asset') }} with the actual asset path
         $content = preg_replace_callback('/\{\{\s*theme_assets\(\s*[\'"](.+?)[\'"]\s*\)\s*\}\}/', function ($matches) {
@@ -261,9 +288,8 @@ class ThemeManager {
             }
 
             // Verifică dacă este o variabilă globală
-            $globals = app('globals');
+            $globals = app('global_vars');
             if ($value = $globals->get($variable)) {
-                //var_dump($globals->get($variable) ?? $value);
                 return $value ?? '';
             }
 
@@ -337,4 +363,47 @@ class ThemeManager {
     public function url(string $path = ''): string {
         return "http://" . $_SERVER['HTTP_HOST'] . '/' . ltrim($path, '/');
     }
+
+    public function setPath(string $path): void {}
+    public function setUrl(string $url): void {}
+    public function setTitle(string $title): void {}
+    public function setMetaDescription(string $description): void {}
+    public function setAssetPath(string $path): void {}
+
+    public function setThemeLayout(string $layout): void {
+        $this->themeLayout = $layout;
+    }
+    public function setThemeLayoutPath(string $path): void {
+        $this->themeLayoutPath = $path;
+    }
+
+    public function setKeywords(string $keywords): void {}
+    public function setCopyright(string $copyright): void {}
+    /*
+    public function setVariable(string $name, $value): void {}
+    public function setGlobalVariable(string $name, $value): void {}
+    public function setVariables(array $variables): void {}
+    public function setGlobalVariables(array $globalVariables): void {}
+    public function setThemeViewsPath(string $path): void {}
+    public function setThemeAssetsPath(string $path): void {}
+    public function setThemeLayoutVars(array $vars): void {}
+    public function setThemeViewVars(array $vars): void {}
+    public function setThemeAssetVars(array $vars): void {}
+    public function setThemeViewSections(array $sections): void {}
+    public function setThemeAssetSections(array $sections): void {}
+    public function setThemeViewFiles(array $files): void {}
+    public function setThemeAssetFiles(array $files): void {}
+    public function setThemeViewPaths(array $paths): void {}
+    public function setThemeAssetPaths(array $paths): void {}
+    public function setThemeViewExtensions(array $extensions): void {}
+    public function setThemeAssetExtensions(array $extensions): void {}
+    public function setThemeViewFilters(array $filters): void {}
+    public function setThemeAssetFilters(array $filters): void {}
+    public function setThemeViewComposers(array $composers): void {}
+    public function setThemeAssetComposers(array $composers): void {}
+    public function setThemeViewMiddleware(array $middleware): void {}
+    public function setThemeAssetMiddleware(array $middleware): void {}
+    public function setThemeViewVariables(array $variables): void {}
+    public function setThemeAssetVariables(array $variables): void {}
+    */
 }
