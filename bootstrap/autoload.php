@@ -1,4 +1,6 @@
 <?php
+use STS\core\Facades\Theme;
+
 if (!function_exists('storage_path')) {
     function storage_path($path = '') {
         return ROOT_PATH . '/storage' . ($path ? DIRECTORY_SEPARATOR . $path : $path);
@@ -131,14 +133,20 @@ if (!function_exists('url')) {
     }
 }
 
-function trans(string $key, array $params = []): string {
-    $translations = [
-        'welcome.message' => 'Welcome, :name!',
-        // Alte traduceri...
-    ];
+function formTrans(string $key, array $params = []): string {
+    // Încarcă traducerile folosind metoda temei
+    $translations = Theme::loadThemesTranslations();
 
+    // Verifică dacă traducerile au fost încărcate corect
+    if (!is_array($translations)) {
+        // Dacă traducerile nu au fost încărcate corect, returnează cheia sau un mesaj de eroare
+        return "Translation array is not valid.";
+    }
+
+    // Obține mesajul tradus sau folosește cheia ca fallback
     $message = $translations[$key] ?? $key;
 
+    // Înlocuiește parametrii în mesajul tradus
     foreach ($params as $paramKey => $paramValue) {
         $message = str_replace(':' . $paramKey, $paramValue, $message);
     }

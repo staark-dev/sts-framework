@@ -1,6 +1,6 @@
 <?php declare(strict_types=1); class_exists('STS\core\Themes\ThemeManager') or exit; ?>
 <?php
-/* Cached on 2024-09-01 03:19:43 */
+/* Cached on 2024-09-01 11:51:03 */
 ?>
 <!DOCTYPE html>
 <html lang="en">

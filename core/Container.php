@@ -93,6 +93,11 @@ final class Container implements ContainerInterface {
                 throw new ServiceNotFoundException("Class [$name] is not instantiable.");
             }
 
+            if ($name === 'STS\\core\\Http\\Request') {
+                // Folosește metoda statică pentru a crea instanța Request
+                return \STS\core\Http\Request::collection();
+            }
+
             $constructor = $reflection->getConstructor();
 
             // Dacă clasa nu are constructor, creează o instanță simplă

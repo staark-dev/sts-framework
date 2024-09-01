@@ -37,23 +37,24 @@ class FormHelper
      */
     public function input(string $type, string $name, ?string $value = null, array $attributes = []): string
     {
-        $value = $value ?? $this->getValue($name);
-        $attrs = $this->attributes($attributes);
-        $valueAttr = $value ? "value=\"{$value}\"" : '';
-
-        $attributes['type'] = $type;
-        $attributes['name'] = $name;
-        $attributes['value'] = htmlspecialchars((string)$value, ENT_QUOTES);
-        $attributesString = $this->buildHtmlAttributes($attributes);
-        
-        $errorClass = $this->hasError($name) ? 'is-invalid' : '';
-        $errorMessage = $this->getError($name);
-        //  . ($errorMessage ? "<div class=\"invalid-feedback\">{$errorMessage}</div>" : '')
-        
-        //return sprintf('<input %s>', $attributesString);
-
-        return "<input type=\"{$type}\" name=\"{$name}\" {$valueAttr} {$attrs} class=\"{$errorClass}\" />"
-               . ($errorMessage ? "<div class=\"invalid-feedback\">{$errorMessage}</div>" : '');
+         // Obține valoarea implicita (de exemplu, pentru a păstra valorile introduse în cazul erorilor)
+         $value = $value ?? $this->getValue($name);
+         $attrs = $this->attributes($attributes);
+         $valueAttr = $value ? "value=\"{$value}\"" : '';
+     
+         // Construiește atributele HTML
+         $attributes['type'] = $type;
+         $attributes['name'] = $name;
+         $attributes['value'] = htmlspecialchars((string)$value, ENT_QUOTES);
+         $attributesString = $this->buildHtmlAttributes($attributes);
+     
+         // Adaugă clasa pentru eroare dacă există
+         $errorClass = $this->hasError($name) ? 'is-invalid' : '';
+         $errorMessage = $this->getError($name);
+         
+         // Returnează input-ul generat cu mesaj de eroare dacă este cazul
+         return "<input {$attributesString} class=\"form-control {$errorClass}\" />"
+                . ($errorMessage ? "<div class=\"invalid-feedback\">{$errorMessage}</div>" : '');
     }
 
     protected function getValue(string $name)
@@ -69,13 +70,13 @@ class FormHelper
     public function label(string $name, ?string $text = null, array $attributes = []): string
     {
         $attrs = $this->attributes($attributes);
-        $text = $text ? trans($text) : ucfirst(trans($name));
+        $text = $text ? formTrans($text) : ucfirst(formTrans($name));
         return "<label for=\"{$name}\" {$attrs}>{$text}</label>";
     }
     
     protected function getError(string $name): ?string
     {
-        return isset($_SESSION['errors'][$name]) ? trans($_SESSION['errors'][$name]) : null;
+        return isset($_SESSION['errors'][$name]) ? formTrans($_SESSION['errors'][$name]) : null;
     }
     
 
@@ -146,14 +147,12 @@ class FormHelper
      */
     protected function attributes(array $attributes): string
     {
-        $html = '';
-
-        foreach ($attributes as $key => $value) {
-            $html .= "{$key}=\"{$value}\" ";
-        }
-
-        return trim($html);
-    }
+        $htmlAttributes = array_map(function($key, $value) {
+            return sprintf('%s="%s"', htmlspecialchars($key, ENT_QUOTES), htmlspecialchars($value, ENT_QUOTES));
+        }, array_keys($attributes), $attributes);
+    
+        return implode(' ', $htmlAttributes);
+    }    
 
     public function csrfToken(): string
     {

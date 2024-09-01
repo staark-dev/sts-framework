@@ -14,6 +14,7 @@ use STS\core\Helpers\FormHelper;
 use STS\core\Facades\Theme;
 use STS\core\Facades\Globals;
 use STS\core\Facades\Translate;
+use STS\core\Security\Validator;
 
 final class AppServiceProvider extends ServiceProvider
 {
@@ -40,6 +41,8 @@ final class AppServiceProvider extends ServiceProvider
         $this->registerRequest();
         $this->registerResponse();
         $this->registerKernel();
+        $this->registerValidators();
+        $this->registerHashed();
     }
 
     private function registerConfig(): void
@@ -66,6 +69,24 @@ final class AppServiceProvider extends ServiceProvider
         $this->container->alias('db', 'db.connection');
     }
 
+    private function registerValidators(): void
+    {
+        // Înregistrează serviciile de validare necesare
+        //...
+        $this->container->singleton('validator', function() {
+            return new \STS\core\Security\Validator();
+        });
+    }
+
+    private function registerHashed(): void
+    {
+        // Înregistrează serviciile de hash necesare
+        //...
+        $this->container->singleton('hash', function() {
+            return new \STS\core\Security\Hash();
+        });
+    }
+
     private function registerThemes(): void
     {
         // Inregistrează configuratiile in container
@@ -82,8 +103,8 @@ final class AppServiceProvider extends ServiceProvider
         });
 
         // Inregistrează serviciul de baza de date in container
-        $this->container->registerClass('STS\core\Themes\ThemeManager', 10);
-        $this->container->registerClass('STS\core\Helpers\FormHelper', 25);
+        $this->container->registerClass('\STS\core\Themes\ThemeManager', 10);
+        $this->container->registerClass('\STS\core\Helpers\FormHelper', 25);
 
         // Definirea unui alias pentru un serviciu comun
         $this->container->alias('theme', 'STS\core\Themes\ThemeManager');
@@ -115,8 +136,8 @@ final class AppServiceProvider extends ServiceProvider
 
     private function registerRequest(): void
     {
-        $this->container->singleton('Request', function($container) {
-            return STS\core\Http\Request::collection();
+        $this->container->bind('Request', function () {
+            return new \STS\core\Http\Request();
         });
     }
 

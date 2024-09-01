@@ -1,34 +1,108 @@
 @extends('layouts/main')
 
 @section('content')
-<div class="container">
-    <div class="card">
-        <div class="card-header">
-            {{ trans('register') }}
+<div class="container mt-5 py-2 d-flex justify-content-center">
+    <div class="row">
+        <div class="card col-8">
+            <div class="card-header">
+                {{ trans('register') }}
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-center">
+                    <p class="small">{{ trans('register_login_social') }}</p>
+                </div>
+                <div class="d-flex justify-content-center mt-3 login_social" style="font-size: 24px;">
+                    {{ trans('login_social_google_icon')}} {{ trans('login_social_facebook_icon')}} {{ trans('login_social_twitter_icon')}} {{ trans('login_social_github_icon')}}
+                </div>
+                <br />
+    
+                {{ formOpen(route('auth.signup'), 'post', ['class' => 'form']) }}
+    
+                <div class="row">
+                    <div class="col-6">
+                        {{ formlabel('user_name', formTrans('register_user_name'), ['class' => 'form-label']) }}
+                        {{ formInput('text', 'user_name', '', ['class' => 'form-control', 'id' => 'user_name', 'aria-describedby' => 'user_name_help', 'required' => '']) }}
+                    </div>
+                    <div class="col-6">
+                        {{ formlabel('user_email', formTrans('register_user_email'), ['class' => 'form-label']) }}
+                        {{ formInput('email', 'user_mail', '', ['class' => 'form-control', 'id' => 'user_mail', 'aria-describedby' => 'user_mail_help', 'required' => '']) }}
+                    </div>
+                </div>
+    
+                <div class="my-3">
+                    {{ formlabel('user_password', formTrans('register_password'), ['class' => 'form-label']) }}
+                    {{ formInput('password', 'user_password', '', ['class' => 'form-control', 'id' => 'user_password', 'required' => '']) }}
+                </div>
+    
+                <div class="mb-3">
+                    {{ formlabel('user_password_confirm', formTrans('register_confirm_password'), ['class' => 'form-label']) }}
+                    {{ formInput('password', 'user_password_confirm', '', ['class' => 'form-control', 'id' => 'user_password', 'required' => '']) }}
+                </div>
+    
+                <div class="col-8 justify-content-center">
+                    <div class="form-check">
+                        {{ formCheckbox('user_agree', '1', false, ['class' => 'form-check-input', 'id' => 'user_agree']) }}
+                        <label for="user_agree" class="form-check-label">{{ __('register_agree_label', [
+                            ':terms' => '<a href="#">Terms of Service</a>',
+                            ':privacy' => '<a href="#">Privacy Policy</a>'
+                        ]) }}</label>
+                    </div>
+    
+                    <div class="form-check">
+                        {{ formCheckbox('user_agree_register', '1', false, ['class' => 'form-check-input', 'id' => 'user_agree_register']) }}
+                        <label for="user_agree" class="form-check-label">{{ __('register_agree_text', [
+                            ':terms' => '<a href="#">Terms of Service</a>',
+                            ':privacy' => '<a href="#">Privacy Policy</a>'
+                        ]) }}</label>
+                    </div>
+                </div>
+    
+                <div class="col mt-3 justify-content-center">
+                    {{ formbutton(formTrans('register_form_btn'), ['class' => 'btn btn-primary', 'id' => 'register', 'style' => 'width: 100%']) }}
+                    {{ csrfToken() }}
+                </div>
+                {{ formClose() }}
+                <br />
+                <br />
+            </div>
         </div>
-        <div class="card-body">
-            {{ formOpen(route('auth.signup'), 'post', ['class' => 'form']) }}
-            <div class="mb-3">
-                {{ formlabel('user_name', 'Username: *', ['class' => 'form-label']) }}
-                {{ formInput('text', 'user_name', '', ['class' => 'form-control', 'id' => 'user_name', 'aria-describedby' => 'user_name_help', 'required' => '']) }}
-                <div id="user_name_help" class="form-text">We'll never share your username with anyone else.</div>
-            </div>
-
-            <div class="mb-3">
-                {{ formlabel('user_email', 'E-Mail address: *', ['class' => 'form-label']) }}
-                {{ formInput('email', 'user_mail', '', ['class' => 'form-control', 'id' => 'user_mail', 'aria-describedby' => 'user_mail_help', 'required' => '']) }}
-                <div id="user_mail_help" class="form-text">We'll never share your email with anyone else.</div>
-            </div>
-
-            <div class="mb-3">
-                {{ formlabel('user_password', 'Password: *', ['class' => 'form-label']) }}
-                {{ formInput('password', 'user_password', '', ['class' => 'form-control', 'id' => 'user_password', 'required' => '']) }}
-            </div>
-
-            {{ formbutton('Register', ['class' => 'btn btn-primary', 'id' => 'send']) }}
-            {{ csrfToken() }}
-            {{ formClose() }}
+        <div class="col-8" style="margin: 0 auto;"> 
+            <div class="d-flex justify-content-center mt-3"><a href="{{ route('auth.login') }}">{{ trans('register_have_account') }}</a></div>
         </div>
     </div>
 </div>
+
+<style>
+    footer {
+        display: none;
+    }
+
+    .card.d-flex.justify-content-center {
+        border: 0;
+        background: #f8f9fa;
+        color: #2e2e2e !important;
+    }
+
+    .card a {
+        color: #125cb9 !important;
+    }
+
+    .card-header {
+        background: #456389;
+        color: white;
+    }
+
+    .card-body {
+        box-shadow: 0 2px 5px #dee2e6;
+    }
+
+    body {
+        background: #e9ecef;
+    }
+
+    .header > div + div {
+        display: none;
+        background: #fff;
+    }
+</style>
 @endsection

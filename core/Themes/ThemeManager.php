@@ -6,6 +6,7 @@ use STS\core\Themes\GlobalVariables;
 use STS\core\Helpers\FormHelper;
 use STS\core\Facades\Theme;
 use STS\core\Facades\Globals;
+use STS\core\Facades\Translate;
 
 class ThemeManager {
     # Theme Path
@@ -147,6 +148,33 @@ class ThemeManager {
         return $translation;
     }
 
+    function __(string $key, array $params = []): string {
+        // Obține traducerile din sistem
+        $translations = $this->loadThemesTranslations();
+
+        // Verifică dacă traducerile sunt un array valid
+        if (!is_array($translations)) {
+            $translations = [];
+        }
+
+        // Obține mesajul din traduceri sau folosește cheia ca fallback
+        $message = $translations[$key] ?? $key;
+
+        // Traduce fiecare parametru recursiv
+        foreach ($params as $paramKey => $paramValue) {
+            // Verifică dacă paramValue este o cheie de traducere și traduce-l
+            if (is_string($paramValue) && isset($translations[$paramValue])) {
+                var_dump($paramValue = $translations[$paramValue]);
+                $paramValue = $translations[$paramValue];
+            }
+
+            // Înlocuiește parametrii în mesaj
+            $message = str_replace($paramKey, $paramValue, $message);
+        }
+
+        return $message;
+    }    
+
     protected function loadThemes(string $themePath): void 
     {
         foreach (glob($themePath . '/*', GLOB_ONLYDIR) as $dir) {
@@ -277,6 +305,28 @@ class ThemeManager {
             $params = isset($matches[2]) ? json_decode($matches[2], true) : [];
             return '<?= $this->trans(\'' . $key . '\', ' . var_export($params, true) . '); ?>';
         }, $content);
+
+        // Înlocuiește {{ __('key', [parametri]) }} cu traducerea reală folosind callback-ul preg_replace
+        $content = preg_replace_callback(
+            '/\{\{\s*__\(\s*[\'"](.+?)[\'"]\s*(?:,\s*(\[(?:[^\[\]]|(?2))*\])\s*)?\)\s*\}\}/',
+            function ($matches) {
+                $key = $matches[1];
+
+                // Convertește parametrii într-un array PHP valid
+                $paramsString = $matches[2] ?? '[]';
+                eval('$params = ' . $paramsString . ';');
+
+                // Verifică dacă parametrii sunt un array valid
+                if (!is_array($params)) {
+                    $params = [];
+                }
+
+                // Construiește apelul metodei trans
+                return '<?= $this->__(\'' . addslashes($key) . '\', ' . var_export($params, true) . '); ?>';
+            },
+            $content
+        );
+
 
         // Replace {{ variable }} or {{ function_name(arguments) }} with the corresponding PHP code
         $content = preg_replace_callback('/\{\{\s*(.+?)\s*\}\}/', function ($matches) {

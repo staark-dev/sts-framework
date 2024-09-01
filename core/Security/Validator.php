@@ -2,6 +2,8 @@
 namespace STS\core\Security;
 
 use Closure;
+use STS\core\Security\ValidationResult;
+use STS\core\Facades\Database;
 
 class Validator {
     protected array $errors = [];
@@ -15,14 +17,25 @@ class Validator {
 
     protected array $data = [];
 
-    public function validate(array $data, array $rules): bool {
+    public function __construct() {}
+    
+    public function validate(array $data, array $rules): ValidationResult
+    {
+        // Apelează un hook înainte de validare, dacă există
         $this->triggerHook('beforeValidation', $data, $rules);
-        $result = $this->performValidation($data, $rules);
-        $this->triggerHook('afterValidation', $data, $rules, $result);
-        return $result;
+        
+        // Efectuează validarea și obține rezultatul
+        $this->performValidation($data, $rules);
+        
+        // Apelează un hook după validare, dacă există
+        $this->triggerHook('afterValidation', $data, $rules, empty($this->errors));
+
+        // Returnează un obiect de tip ValidationResult
+        return new ValidationResult(empty($this->errors), $this->errors);
     }
 
-    protected function performValidation(array $data, array $rules): bool {
+    protected function performValidation(array $data, array $rules): void
+    {
         foreach ($rules as $field => $ruleSet) {
             if (strpos($field, '.') !== false) {
                 $keys = explode('.', $field);
@@ -35,7 +48,6 @@ class Validator {
                 $this->applyRules($data[$field] ?? null, $ruleSet, $field);
             }
         }
-        return empty($this->errors);
     }
 
     protected function applyRules($value, string $ruleSet, string $field): void {
@@ -77,9 +89,13 @@ class Validator {
     }
 
     protected function isUnique(string $field, $value, string $param): bool {
+        // Desparte parametrul pentru a obține numele tabelului și al coloanei
         [$table, $column] = explode(',', $param);
-        // Aici ar trebui să verifici unicitatea în baza de date
-        $exists = false; // Verifică în baza de date
+
+        // Verifică dacă valoarea există deja în baza de date
+        $exists = Database::existsInDb($table, $column, $value);
+
+        // Returnează true dacă valoarea nu există deja (este unică)
         return !$exists;
     }
 

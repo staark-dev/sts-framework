@@ -1,60 +1,102 @@
 @extends('layouts/main')
 
 @section('content')
-<div class="container py-2">
-    <div class="card">
-        <div class="card-header">
-            <div class="row">
-                <div class="col mx-1 pt-1">
-                    Sign in to your account!
+<div class="container mt-5 py-2 d-flex justify-content-center">
+    <div class="row">
+        <div class="card col-8">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col mx-1 pt-1">
+                        {{ trans('login') }}
+                    </div>
                 </div>
-                
-                <div class="d-flex justify-content-end col">
-                    <span class="mx-1 pt-1">or sign up with: </span>
-                    <a href="#" class="btn signup-btn btn-sm btn-link btn-floating mx-1"><i class="bi bi-google"></i></a>
-                    <a href="#" class="btn signup-btn btn-sm btn-link btn-floating mx-1"><i class="bi bi-apple"></i></a>
-                    <a href="#" class="btn signup-btn btn-sm btn-link btn-floating mx-1"><i class="bi bi-github"></i></a>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-center">
+                    <p class="small">{{ trans('login_with_social') }}</p>
+                </div>
+                <div class="d-flex justify-content-center mt-3 login_social" style="font-size: 24px;">
+                    {{ trans('login_social_google_icon')}} {{ trans('login_social_facebook_icon')}} {{ trans('login_social_twitter_icon')}} {{ trans('login_social_github_icon')}}
+                </div>
+                <br />
+
+                <div class="row">
+                    <div class="col col-md-8 col-lg d-flex justify-content-center">
+                        {{ formOpen(route('auth.login.handle'), 'post', ['class' => 'form']) }}
+                        <div class="mb-3">
+                            {{ formlabel('user_email', formTrans('login_form_name'), ['class' => 'form-label']) }}
+                            {{ formInput('text', 'user_email_name', '', ['class' => 'form-control', 'id' => 'user_email', 'aria-describedby' => 'user_email_help', 'required' => '']) }}
+                        </div>
+    
+                        <div class="mb-3">
+                            {{ formlabel('user_password', formtrans('login_form_pass'), ['class' => 'form-label']) }}
+                            {{ formInput('password', 'password', '', ['class' => 'form-control', 'id' => 'user_password', 'aria-describedby' => 'user_password_help', 'required' => '']) }}
+                        </div>
+    
+                        <div class="row justify-content-center mb-5">
+                            <div class="col-6">
+                                <div class="form-check">
+                                    {{ formCheckbox('remember', '', true, ['class' => 'form-check-input']) }}
+                                    {{ formlabel('remember', '<i class="fa-solid fa-bookmark"></i> ' . formtrans('login_remember_me'), ['class' => 'form-check-label', 'for' => 'remember']) }}
+                                </div>
+                            </div>
+    
+                            <div class="col-6 justify-content-right" style="text-align: right;">
+                                <a href="{{ route('auth.reset_password') }}"><i class="fa-solid fa-key"></i>  {{ trans('login_forgot_pass') }}</a>
+                            </div>
+    
+                            <div class="col mt-3 justify-content-center">
+                                {{ formbutton(formTrans('login_form_btn'), ['class' => 'btn btn-primary', 'id' => 'login', 'style' => 'width: 100%']) }}
+                                {{ csrfToken() }}
+                            </div>
+                        </div>
+                        {{ formClose() }}
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col col-md-8 col-lg d-flex justify-content-center">
-                    <form action="{{ url('/auth/login') }}" method="post" accept-charset="UTF-8">
-                        <div class="mb-3">
-                            <label for="inputEmail" class="form-label">Email address</label>
-                            <input type="email" name="user_email" class="form-control" id="inputEmail" aria-describedby="emailHelp" required />
-                            <div id="emailHelp" class="form-text">We'll never share your email with anyone else.</div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="passwordBlock" class="form-label">Password</label>
-                            <input type="password" name="user_password" class="form-control" id="passwordBlock"  aria-describedby="passwordHelpBlock" required />
-                            <div id="passwordHelpBlock" class="form-text">
-                                Your password must be 8-20 characters long, contain letters and numbers, and must not contain spaces, special characters, or emoji.
-                            </div>
-                        </div>
-                        <div class="row mb-4">
-                            <div class="col d-flex justify-content-center">
-                                <!-- Checkbox -->
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" value="" id="save_login" checked />
-                                    <label class="form-check-label" for="save_login"> Remember me </label>
-                                </div>
-                            </div>
-                            <div class="col d-flex justify-content-center">
-                                <!-- Simple link -->
-                                <a href="#!">Forgot password?</a>
-                            </div>
-                            <div class="d-flex justify-content-center mt-3">
-                                <input type="submit" style="width: 70%" class="btn btn-primary btn-block mb-4" value="Sign In" />
-                                <input type="hidden" value="@csrf" />
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            <div class="d-flex justify-content-center mt-3">Don't have an account?&nbsp;&nbsp;<a href="{{ route('auth.signup') }}">Register here</a></div>
+
+        <div class="col-8" style="margin: 0 auto;">
+            <div class="d-flex justify-content-center mt-3"><a href="{{ route('auth.signup') }}">{{ trans('login_dont_account') }}</a></div>
         </div>
     </div>
 </div>
+<style>
+    footer {
+        display: none;
+    }
+
+    .card.d-flex.justify-content-center {
+        border: 0;
+        background: #f8f9fa;
+        color: #2e2e2e !important;
+    }
+
+    .card a {
+        color: #2e2e2e !important;
+    }
+
+    .card-header {
+        background: #456389;
+        color: white;
+    }
+
+    .card-body {
+        box-shadow: 0 2px 5px #dee2e6;
+    }
+
+    body {
+        background: #e9ecef;
+    }
+
+    .header > div + div {
+        display: none;
+        background: #fff;
+    }
+
+    .card.col-6 {
+        margin: 0 auto;
+        padding: 0;
+    }
+</style>
 @endsection

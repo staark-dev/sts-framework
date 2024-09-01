@@ -1,6 +1,6 @@
 <?php declare(strict_types=1); class_exists('STS\core\Themes\ThemeManager') or exit; ?>
 <?php
-/* Cached on 2024-09-01 03:20:19 */
+/* Cached on 2024-09-01 12:38:07 */
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -88,37 +88,97 @@
     </div>
 </div>
     
-<div class="container">
-    <div class="card">
+<div class="container mt-5 py-2 d-flex justify-content-center">
+    <div class="card" style="width: 50%;">
         <div class="card-header">
             <?= $this->trans('register', array (
 )); ?>
         </div>
         <div class="card-body">
             <?= call_user_func($this->variables['formOpen'], route('auth.signup'), 'post', ['class' => 'form']); ?>
-            <div class="mb-3">
-                <?= call_user_func($this->variables['formlabel'], 'user_name', 'Username: *', ['class' => 'form-label']); ?>
-                <?= call_user_func($this->variables['formInput'], 'text', 'user_name', '', ['class' => 'form-control', 'id' => 'user_name', 'aria-describedby' => 'user_name_help', 'required' => '']); ?>
-                <div id="user_name_help" class="form-text">We'll never share your username with anyone else.</div>
-            </div>
 
-            <div class="mb-3">
-                <?= call_user_func($this->variables['formlabel'], 'user_email', 'E-Mail address: *', ['class' => 'form-label']); ?>
-                <?= call_user_func($this->variables['formInput'], 'email', 'user_mail', '', ['class' => 'form-control', 'id' => 'user_mail', 'aria-describedby' => 'user_mail_help', 'required' => '']); ?>
-                <div id="user_mail_help" class="form-text">We'll never share your email with anyone else.</div>
+            <div class="row">
+                <div class="col-6">
+                    <?= call_user_func($this->variables['formlabel'], 'user_name', 'Username: *', ['class' => 'form-label']); ?>
+                    <?= call_user_func($this->variables['formInput'], 'text', 'user_name', '', ['class' => 'form-control', 'id' => 'user_name', 'aria-describedby' => 'user_name_help', 'required' => '']); ?>
+                </div>
+                <div class="col-6">
+                    <?= call_user_func($this->variables['formlabel'], 'user_email', 'E-Mail address: *', ['class' => 'form-label']); ?>
+                    <?= call_user_func($this->variables['formInput'], 'email', 'user_mail', '', ['class' => 'form-control', 'id' => 'user_mail', 'aria-describedby' => 'user_mail_help', 'required' => '']); ?>
+                    <div id="user_email_help" class="form-text"><?= $this->trans('login_email_help', array (
+)); ?></div>
+                </div>
             </div>
 
             <div class="mb-3">
                 <?= call_user_func($this->variables['formlabel'], 'user_password', 'Password: *', ['class' => 'form-label']); ?>
                 <?= call_user_func($this->variables['formInput'], 'password', 'user_password', '', ['class' => 'form-control', 'id' => 'user_password', 'required' => '']); ?>
+                <div id="user_password_help" class="form-text"><?= $this->trans('login_pass_help', array (
+)); ?></div>
             </div>
 
-            <?= call_user_func($this->variables['formbutton'], 'Register', ['class' => 'btn btn-primary', 'id' => 'send']); ?>
-            <?= call_user_func($this->variables['csrfToken'], ); ?>
+            <div class="col-4">
+                <div class="form-check">
+                    <?= call_user_func($this->variables['formCheckbox'], 'user_agree', '1', false, ['class' => 'form-check-input', 'id' => 'user_agree']); ?>
+                    <label for="user_agree" class="form-check-label">{{ __('register_agree_label', [
+                        ':terms' => trans('terms'),
+                        ':policy' => trans('privacy')
+                    ]) }}</label>
+                </div>
+
+                <div class="form-check">
+                    <?= call_user_func($this->variables['formCheckbox'], 'user_agree_register', '1', false, ['class' => 'form-check-input', 'id' => 'user_agree_register']); ?>
+                    <label for="user_agree" class="form-check-label">{{ __('register_agree_text', [
+                        ':terms' => trans('terms'),
+                        ':policy' => trans('privacy')
+                    ]) }}</label>
+                </div>
+            </div>
+
+            <div class="col-8 mt-3">
+                <?= call_user_func($this->variables['formbutton'], formTrans('register_form_btn'), ['class' => 'btn btn-primary', 'id' => 'register', 'style' => 'width: 100%']); ?>
+                <?= call_user_func($this->variables['csrfToken'], ); ?>
+            </div>
+            <div class="d-flex justify-content-center mt-3"><a href="<?= call_user_func($this->variables['route'], 'auth.login'); ?>"><?= $this->trans('register_have_account', array (
+)); ?></a></div>
             <?= call_user_func($this->variables['formClose'], ); ?>
         </div>
     </div>
 </div>
+
+<style>
+    footer {
+        display: none;
+    }
+
+    .card.d-flex.justify-content-center {
+        border: 0;
+        background: #f8f9fa;
+        color: #2e2e2e !important;
+    }
+
+    .card a {
+        color: #2e2e2e !important;
+    }
+
+    .card-header {
+        background: #456389;
+        color: white;
+    }
+
+    .card-body {
+        box-shadow: 0 2px 5px #dee2e6;
+    }
+
+    body {
+        background: #e9ecef;
+    }
+
+    .header > div + div {
+        display: none;
+        background: #fff;
+    }
+</style>
 
     <script src="<?php echo htmlspecialchars('http://192.168.1.197/themes/modern/assets/bootstrap.min.js', ENT_QUOTES, 'UTF-8'); ?>"></script>
 <script src="<?php echo htmlspecialchars('http://192.168.1.197/themes/modern/assets/bootstrap.bundle.min.js', ENT_QUOTES, 'UTF-8'); ?>"></script>

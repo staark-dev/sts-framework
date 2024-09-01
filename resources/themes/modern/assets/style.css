@@ -14,7 +14,10 @@
  *
  *
  */
-
+body, html {
+    font-size: 14px;
+    font-weight: 500;
+}
 .load_app_time {
     font-size: 13px;
     color: #75a9ef;
@@ -38,7 +41,47 @@ a.lgo {
     font-size: 14px;
 }
 
-.copyright > a {
+.copyright > a, a {
     text-decoration: none;
+    font-size: 14px;
     color: #1977c7;
+}
+
+
+button#register, button#login {
+    background: #75b798;
+    border: 1px solid #75b798;
+}
+
+button#register:hover, button#login:hover {
+    background: #456389;
+    border: 1px solid #456389;
+}
+
+.login_social {
+    color: #f3f3f3;
+    background: #456389;
+    padding: 15px 10px;
+    margin: 0px -14px;
+    height: 50px;
+    line-height: 2rem;
+}
+
+.login_social a i {
+    margin: 0 10px;
+    font-size: 24px;
+    color: #f3f3f3;
+}
+
+.small {
+    display: inline-block;
+    margin: 0 auto;
+    clear: both;
+    font-size: 15px;
+    white-space: break-spaces;
+}
+
+.card.col-8 {
+    padding: 0;
+    margin: 0 auto;
 }

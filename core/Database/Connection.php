@@ -47,11 +47,11 @@ final class Connection {
     }
 
     public static function getInstance(array $config): self {
-        if (self::$instance === null) {
+        if (self::$instance === null || self::$instance->config !== $config) {
             self::$instance = new self($config);
         }
         return self::$instance;
-    }
+    }    
 
     public function addHook(string $name, Closure $callback): void {
         $this->hooks[$name][] = $callback;
@@ -118,9 +118,24 @@ final class Connection {
     }
 
     public function createTrigger(string $name, string $table, string $time, string $event, string $body): void {
-        $sql = "CREATE TRIGGER {$name} {$time} {$event} ON {$table} FOR EACH ROW {$body}";
-        $this->execute($sql);
+        $sql = "CREATE TRIGGER :name {$time} {$event} ON {$table} FOR EACH ROW :body";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindParam(':name', $name);
+        $stmt->bindParam(':body', $body);
+        $stmt->execute();
     }
+    
+    public function performTransaction(Closure $callback): void {
+        try {
+            $this->beginTransaction();
+            $callback($this);
+            $this->commit();
+        } catch (Exception $e) {
+            $this->rollBack();
+            throw $e; // Sau loghează eroarea pentru analiză ulterioară
+        }
+    }
+    
 
     public function table(string $table): QueryBuilder {
         return new QueryBuilder($this, $table);
@@ -144,6 +159,24 @@ final class Connection {
         $blueprint = new Blueprint($table);
         $callback($blueprint);
         return $blueprint;
+    }
+
+    public function existsInDb(string $table, string $column, $value): bool {
+        // Construiește interogarea SQL pentru a verifica existența valorii
+        $sql = "SELECT COUNT(*) as count FROM {$table} WHERE {$column} = :value";
+        
+        // Pregătește interogarea
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindParam(':value', $value);
+
+        // Execută interogarea
+        $stmt->execute();
+
+        // Obține rezultatul
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // Returnează true dacă există cel puțin o înregistrare
+        return $result['count'] > 0;
     }
 
     public function getPdo(): PDO {

@@ -3,6 +3,12 @@ namespace STS\core\Security;
 
 class Hash
 {
+    private static $defaultOptions = [
+        'cost' => 12, // cost standard pentru bcrypt
+    ];
+    
+    private static $algorithm = PASSWORD_BCRYPT;
+
     /**
      * Hash a password or other sensitive data.
      *
@@ -11,7 +17,8 @@ class Hash
      */
     public static function make(string $data): string
     {
-        return password_hash($data, PASSWORD_BCRYPT);
+        $options = array_merge(self::$defaultOptions, $options);
+        return password_hash($data, self::$algorithm, $options);
     }
 
     /**

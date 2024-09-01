@@ -13,7 +13,11 @@ class QueryBuilder {
     protected ?array $orderBy = null;
     protected ?int $limit = null;
 
-    public function __construct(?Connection $connection, string $table) {
+    public function __construct(Connection $connection, string $table) {
+        if (!$connection) {
+            throw new \InvalidArgumentException('A valid database connection is required.');
+        }
+
         $this->connection = $connection;
         $this->table = $table;
     }
@@ -24,7 +28,6 @@ class QueryBuilder {
     }
 
     public function where(string $field, string $operator, $value): self {
-        //$this->where[] = [$field, $operator, $value];
         $this->conditions[] = "{$field} {$operator} ?";
         $this->params[] = $value;
         return $this;
@@ -63,27 +66,37 @@ class QueryBuilder {
 
     public function get(): array {
         $sql = sprintf(
-            "SELECT %s FROM %s %s %s",
+            "SELECT %s FROM %s %s %s %s %s",
             implode(', ', $this->fields),
             $this->table,
             implode(' ', $this->joins),
-            $this->buildWhereClause()
+            $this->buildWhereClause(),
+            $this->buildOrderByClause(),
+            $this->buildLimitClause()
         );
+        
         $results = $this->connection->query($sql, $this->params);
-
+    
         foreach ($results as &$result) {
             foreach ($this->relations as $relation) {
-                // Load relationships (hasOne, hasMany, etc.)
                 $relationMethod = 'load' . ucfirst($relation);
                 if (method_exists($this, $relationMethod)) {
                     $result[$relation] = $this->$relationMethod($result);
                 }
             }
         }
-
+    
         return $results;
     }
-
+    
+    protected function buildOrderByClause(): string {
+        return $this->orderBy ? 'ORDER BY ' . implode(' ', $this->orderBy) : '';
+    }
+    
+    protected function buildLimitClause(): string {
+        return $this->limit ? 'LIMIT ' . $this->limit : '';
+    }
+    
     public function insert(array $data): bool {
         $fields = implode(', ', array_keys($data));
         $placeholders = implode(', ', array_fill(0, count($data), '?'));

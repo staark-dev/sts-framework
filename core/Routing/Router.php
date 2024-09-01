@@ -4,6 +4,7 @@ namespace STS\core\Routing;
 
 use STS\core\Http\Response as HttpResponse;
 use STS\core\Facades\Theme;
+use STS\core\Container;
 use STS\core\Facades\ResponseFacade as Response;
 use STS\core\Exceptions\ControllerNotFoundException;
 use STS\core\Exceptions\MethodNotFoundException;
@@ -270,30 +271,33 @@ class Router {
     protected function resolveControllerAction(string $action, array $params = []) {
         // Desparte acțiunea în numele controllerului și al metodei
         list($controller, $method) = explode('@', $action);
-    
+        
         // Creează numele complet al clasei controllerului cu namespace
         $controllerClass = "STS\\app\\Controllers\\$controller";
-    
+        
         // Verifică dacă clasa controllerului există
-        if (class_exists($controllerClass)) {
-            // Obține instanța controllerului din container (pentru a gestiona dependențele)
-            $controllerInstance = app()->make($controllerClass);
-    
-            // Verifică dacă metoda există în instanța controllerului
-            if (method_exists($controllerInstance, $method)) {
-                return call_user_func_array([$controllerInstance, $method], $params ?? []);
-            }
-    
-            // Aruncă o excepție specifică dacă metoda nu este găsită
-            if (!method_exists($controllerInstance, $method)) {
-                throw new MethodNotFoundException("Method not found: $controllerClass@$method");
-            }
-        }
-    
-        // Aruncă o excepție specifică dacă clasa controllerului nu este găsită
         if (!class_exists($controllerClass)) {
             throw new ControllerNotFoundException("Controller not found: $controllerClass");
         }
+
+        // Obține instanța controllerului din container (pentru a gestiona dependențele)
+        $controllerInstance = Container::getInstance()->make($controllerClass);
+
+        // Verifică dacă metoda există în instanța controllerului
+        if (!method_exists($controllerInstance, $method)) {
+            throw new MethodNotFoundException("Method not found: $controllerClass@$method");
+        }
+
+        // Obține instanța Request-ului
+        $request = Container::getInstance()->make('STS\\core\\Http\\Request');
+
+        // Dacă nu sunt parametri, trimite obiectul Request ca parametru
+        if (empty($params)) {
+            $params = [$request];
+        }
+
+        // Apelează metoda controllerului cu parametrii specificați
+        return call_user_func_array([$controllerInstance, $method], $params);
     }
     
     protected function handleNotFound(): void

@@ -3,8 +3,11 @@ namespace STS\app\Controllers;
 use STS\core\Controller;
 
 use STS\core\Http\Response;
+use STS\core\Http\Request;
 use STS\core\Auth\Auth;
-use STS\core\Security\Hash;
+use STS\core\Facades\Hash;
+use STS\core\Facades\Validator;
+use STS\core\Facades\Database;
 
 class AuthController extends Controller
 {
@@ -13,13 +16,43 @@ class AuthController extends Controller
         $this->view('auth/login', 'Login');
     }
 
-    public function loginHandle(): Response
+    public function store(Request $request): Response
     {
-        if(app('Request')->isPost()) {
-            return new Response(app('Request')->post());
+        // Definește regulile de validare pentru datele de conectare
+        $rules = [
+            'user_email' => 'required|email',
+            'user_password' => 'required|string|min:8'
+        ];
+        
+        // Validează datele primite
+        $validationResult = Validator::validate($request->post(), $rules);
+        
+        // Verifică dacă validarea a eșuat
+        if (!$validationResult->passes()) {
+            return new Response(json_encode($validationResult->errors()), 422); // 422 Unprocessable Entity
         }
 
-        return false;
+        // Obține emailul și parola din datele validate
+        $email = $request->post('user_email');
+        $password = $request->post('user_password');
+
+        // Verifică dacă utilizatorul există în baza de date
+        $user = Database::table('users')
+            ->where('email', '=', $email)
+            ->get();
+
+        // Verifică dacă utilizatorul a fost găsit
+        if (empty($user)) {
+            return new Response(json_encode(['error' => 'Invalid credentials.']), 401); // 401 Unauthorized
+        }
+
+        // Verifică parola utilizând clasa Hash
+        if (!Hash::check($password, $user[0]['password'])) {
+            return new Response(json_encode(['error' => 'Invalid credentials.']), 401); // 401 Unauthorized
+        }
+
+        // Autentificare reușită, returnează un răspuns de succes
+        return new Response(json_encode(['success' => true, 'user' => $user[0]]), 200); // 200 OK
     }
 
     public function create(): void
@@ -30,13 +63,23 @@ class AuthController extends Controller
     public function signupHandle(): Response
     {
         if(app('Request')->isPost()) {
-            return new Response(print_r(app('Request')->post()));
+            return new Response(json_encode(app('Request')->post()));
         }
     }
 
     public function profile(): void
     {
 
+    }
+
+    public function forgotPassword(): Response
+    {
+        // Implementarea logica pentru recuperarea parolei
+        // Exemplu:
+        // $token = JWT::encode(['email' => $user['email']], config('app.jwt_secret'), 'HS256');
+        // return new Response(['token' => $token], 200);
+
+        return new Response('Forgot password page', 200);
     }
 
     public function logout(): Response
