@@ -1,6 +1,6 @@
-# **Staark One Framework**
+# **Starter Template System**
 
-**Staark One** este un framework PHP personalizat, conceput pentru a oferi o soluție completă și modulară pentru dezvoltarea aplicațiilor web moderne. Proiectul combină diverse sisteme și tehnologii pentru a permite dezvoltatorilor să construiască aplicații robuste, flexibile și scalabile. Acest framework este ideal pentru cei care doresc să aibă un control total asupra arhitecturii și a funcționalităților unei aplicații.
+**Starter Template System** este un framework PHP personalizat, conceput pentru a oferi o soluție completă și modulară pentru dezvoltarea aplicațiilor web moderne. Proiectul combină diverse sisteme și tehnologii pentru a permite dezvoltatorilor să construiască aplicații robuste, flexibile și scalabile. Acest framework este ideal pentru cei care doresc să aibă un control total asupra arhitecturii și a funcționalităților unei aplicații.
 
 ## **Caracteristici principale**
 
