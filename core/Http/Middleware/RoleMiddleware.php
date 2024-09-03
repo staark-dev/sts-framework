@@ -1,8 +1,9 @@
 <?php
 namespace STS\core\Http\Middleware;
 use STS\core\Facades\Auth;
+use STS\core\Http\MiddlewareInterface;
 
-class RoleMiddleware
+class RoleMiddleware implements MiddlewareInterface
 {
     public function handle($request, callable $next, string $role)
     {
