@@ -3,6 +3,7 @@ $router = app('Router');
 
 // Definirea rutelor
 $router->get('/', 'HomeController@index')->name('home');
+$router->get('/dashboard', 'HomeController@dashboard')->name('dashboard');
 
 // Grupuri de rute cu middleware și prefix
 $router->group(['prefix' => '/admin', 'middleware' => ['AdminAuthMiddleware']], function() use ($router) {
@@ -10,7 +11,7 @@ $router->group(['prefix' => '/admin', 'middleware' => ['AdminAuthMiddleware']], 
     $router->get('/users', 'AdminController@users')->name('admin.users');
 });
 
-$router->group(['prefix' => '/auth', 'middleware' => ['AuthMiddleware']], function() use ($router) {
+$router->group(['prefix' => '/auth'], function() use ($router) {
     $router->get('/login', 'AuthController@login')->name('auth.login');
     $router->post('/login', 'AuthController@store')->name('auth.login.handle');
     $router->get('/signup', 'AuthController@create')->name('auth.signup');

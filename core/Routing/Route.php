@@ -9,11 +9,13 @@ class Route {
     protected $action;
     protected ?string $name = null;
     protected array $middleware = [];
+    protected array $middlewares = []; // Inițializează proprietatea ca un array gol
 
-    public function __construct(string $method, string $uri, $action) {
+    public function __construct(string $method, string $uri, $action, ?array $middleware = []) {
         $this->method = $method;
         $this->uri = $uri;
         $this->action = $action;
+        $this->middleware = $middleware ?? [];
     }
 
     public function name(string $name): self {
@@ -22,17 +24,37 @@ class Route {
         return $this;
     }
 
+    /**
+     * Adaugă middleware-uri la această rută.
+     *
+     * @param string ...$middleware
+     * @return self
+     */
     public function middleware(string ...$middleware): self {
-        $this->middleware = array_merge($this->middleware, $middleware);
+        $this->middlewares = array_merge($this->middlewares, $middleware);
         return $this;
+    }
+    
+    /**
+     * Returnează middleware-urile asociate cu această rută.
+     *
+     * @return array
+     */
+    public function getMiddleware(): array {
+        return $this->middlewares;
+    }
+
+    /**
+     * Returnează acțiunea asociată cu această rută.
+     *
+     * @return mixed
+     */
+    public function getAction() {
+        return $this->action;
     }
 
     public function getName(): ?string {
         return $this->name;
-    }
-
-    public function getMiddleware(): array {
-        return $this->middleware;
     }
 
     public function getMethod(): string {
@@ -41,9 +63,5 @@ class Route {
 
     public function getUri(): string {
         return $this->uri;
-    }
-
-    public function getAction() {
-        return $this->action;
     }
 }

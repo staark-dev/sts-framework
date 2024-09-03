@@ -12,5 +12,6 @@ $provider = new AppServiceProvider(Container::getInstance());
 $provider->register();
 $provider->boot();
 
+// Routing and handling request
 $response = Kernel::handle(Request::collection());
 $response->send();

@@ -8,13 +8,17 @@ use STS\core\Container;
 use STS\core\Facades\ResponseFacade as Response;
 use STS\core\Exceptions\ControllerNotFoundException;
 use STS\core\Exceptions\MethodNotFoundException;
+use STS\core\Http\MiddlewareRegistry;
+use STS\core\Http\Request;
 
 class Router {
     protected static ?Router $instance = null;
     protected array $routes = [];
+    protected array $middleware = []; // Definirea proprietății middleware pentru a preveni erorile
     public array $namedRoutes = [];
     protected string $currentGroupPrefix = '';
     protected array $currentGroupMiddleware = [];
+    protected array $cacheMiddleware = [];
 
     // Constructor privat pentru a preveni instanțierea directă
     private function __construct() {}
@@ -23,6 +27,7 @@ class Router {
         if (self::$instance === null) {
             self::$instance = new self();
         }
+
         return self::$instance;
     }
 
@@ -77,16 +82,257 @@ class Router {
         $instance->currentGroupMiddleware = $previousGroupMiddleware;
     }
 
+    public function middleware(string|array $middleware): self
+    {
+        if (is_array($middleware)) {
+            foreach ($middleware as $mw) {
+                $this->addMiddleware($mw);
+            }
+        } else {
+            $this->addMiddleware($middleware);
+        }
+
+        return $this;
+    }
+
     protected function addRoute(string $method, string $uri, $action): Route {
         // Adaugă prefixul de grup la URI
         $uri = $this->currentGroupPrefix . $uri;
-
+        
         $route = new Route($method, $uri, $action);
-        $route->middleware(...$this->currentGroupMiddleware);
+    
+        // Aplică middleware-urile definite la nivel de rută și de grup
+        if (!empty($this->middleware)) {
+            $route->middleware(...$this->middleware);
+        }
+    
+        if (!empty($this->currentGroupMiddleware)) {
+            $route->middleware(...$this->currentGroupMiddleware);
+        }
+    
         $this->routes[$method][] = $route;
-
+        
+        // Resetează middleware-urile după adăugarea rutei
+        $this->middleware = [];
+    
         return $route;
     }
+    
+
+    /*protected function addRoute(string $method, string $uri, $action): Route {
+        // Adaugă prefixul de grup la URI
+        $uri = $this->currentGroupPrefix . $uri;
+        
+        $route = new Route($method, $uri, $action);
+        $route->middleware(...$this->middleware);
+        $route->middleware(...$this->currentGroupMiddleware);
+        $this->routes[$method][] = $route;
+    
+        // Resetează middleware-urile după adăugarea rutei
+        $this->middleware = [];
+
+        return $route;
+    }*/
+
+    public function dispatch(Request $request) {
+        $method = $request->server('REQUEST_METHOD');
+        $uri = strtok($request->server('REQUEST_URI'), '?'); // Extrage URI-ul fără query string
+    
+        // Detectează și servește resurse statice
+        if (preg_match('/([\w\-\/]+)(\.min)?\.(css|js|jpg|jpeg|png|gif|svg|woff|woff2|ttf|eot)$/i', $uri, $matches)) {
+            $resourceName = $matches[1];
+            $isMinified = !empty($matches[2]); // Verifică dacă este minificat
+            $extension = $matches[3];
+    
+            if ($extension === 'js' && preg_match('/bootstrap\.(.*?)\.js$/i', $uri, $files)) {
+                $this->handleJSResource(str_replace(".js", "", $files[0]), $isMinified);
+                return;
+            }
+    
+            switch ($extension) {
+                case 'css':
+                    $this->handleCSSResource($resourceName, $isMinified);
+                    break;
+                case 'js':
+                    $this->handleJSResource($resourceName, $isMinified);
+                    break;
+                case 'woff':
+                case 'woff2':
+                case 'ttf':
+                case 'eot':
+                    $this->handleFontResource($resourceName);
+                    break;
+                default:
+                    $this->serveStaticResource($resourceName . '.' . $extension);
+                    break;
+            }
+            return;
+        }
+
+        // Parcurge toate rutele pentru metoda specificată
+        foreach ($this->routes[$method] as $route) {
+            $params = $this->match($route->getUri(), $uri);
+            if (!$params) continue;
+    
+            // Obține controllerul și metoda din acțiune
+            list($controllerClass, $method) = explode('@', $route->getAction());
+            
+            // Utilizare corectă a containerului pentru a crea instanța controllerului
+            $controller = "STS\\app\\Controllers\\$controllerClass";
+            $controllerInstance = Container::getInstance()->make($controller);
+    
+            // Aplică middleware-urile definite în controller
+            $this->applyControllerMiddleware($controllerInstance, $method);
+    
+            // Execută middleware-urile asociate rutei
+            $response = $this->handleMiddlewares($route, $request);
+    
+            if ($response instanceof Response) {
+                add_log('Route matched: '. $route->getUri(), 'route_match');
+                return $response; // Dacă middleware-ul a returnat un răspuns, încheie execuția
+            }
+    
+            // Execută acțiunea controllerului
+            if ($route->getAction() instanceof \Closure) {
+                return call_user_func_array($route->getAction(), $params ?? []);
+            }
+    
+            if (is_string($route->getAction())) {
+                return $this->resolveControllerAction($route->getAction(), is_array($params) ? $params : []);
+            }
+        }
+
+        /**
+         * Trebuie să implementezi criteriul de căutare ��
+         * Varianta Buna...
+         */
+        /*foreach ($this->routes[$method] as $route) {
+            $params = $this->match($route->getUri(), $uri);
+            if (!$params) continue;
+
+            // Aplică middleware-urile asociate rutei
+            $response = $this->handleMiddlewares($route, $request);
+
+            if ($response instanceof Response) {
+                return $response; // Dacă middleware-ul a returnat un răspuns, încheie execuția
+            }
+
+            // Verifică tipul acțiunii și execută acțiunea controlerului
+            if ($route->getAction() instanceof \Closure) {
+                return call_user_func_array($route->getAction(), $params ?? []);
+            }
+
+            if (is_string($route->getAction())) {
+                // Dacă `$params` este `true`, înlocuiește-l cu un array gol
+                return $this->resolveControllerAction($route->getAction(), is_array($params) ? $params : []);
+            }
+        }*/
+
+        // Nu s-a găsit nicio rută; returnează 404
+        return $this->handleNotFound();
+    }
+
+    public function addMiddleware(string $middleware): self
+    {
+        // Verifică dacă middleware-ul este deja adăugat
+        if (!in_array($middleware, $this->middleware, true)) {
+            $this->middleware[] = $middleware; // Adaugă middleware-ul la lista de middleware-uri pentru ruta curentă
+        }
+
+        return $this;
+    }
+    
+    protected function applyControllerMiddleware($controllerInstance, string $method) {
+        // Obține middleware-urile definite la nivel de controller
+        $globalMiddlewares = $controllerInstance->getMiddleware();
+        
+        // Obține middleware-urile pentru acțiunea specifică
+        $actionMiddlewares = $controllerInstance->getMiddlewareForActions()[$method] ?? [];
+    
+        // Combină middleware-urile globale și cele pentru acțiunea specifică
+        $middlewares = array_merge($globalMiddlewares, $actionMiddlewares);
+
+        //add_log('... [Middleware executed !]', 'Controller Middleware');
+        // Aplică middleware-urile combinate
+        foreach ($middlewares as $middleware) {
+            if (is_string($middleware)) {
+                $this->addMiddleware($middleware);
+            } elseif (is_array($middleware)) {
+                foreach ($middleware as $singleMiddleware) {
+                    $this->addMiddleware($singleMiddleware);
+                }
+            }
+        }
+    }
+
+    private function handleMiddlewares($route, $request) {
+        if( is_array($this->middleware) && !empty($this->middleware) ) {
+            $route->middleware(...$this->middleware);
+        }
+
+        $middlewares = $route->getMiddleware();
+    
+        if (empty($middlewares)) {
+            return null;
+        }
+
+        $handler = function($request) use (&$middlewares, $route, &$handler) {
+            if (empty($middlewares)) {
+                return $this->executeRouteAction($route->getAction(), []);
+            }
+
+            // Obține primul middleware fără a-l șterge din array
+            $middlewareDefinition = $middlewares[0]; 
+
+            // Verifică dacă middleware-ul are un argument suplimentar (de ex., "check_permission:permission:view_home")
+            if (strpos($middlewareDefinition, ':') !== false) {
+                list($middlewareClass, $argument) = explode(':', $middlewareDefinition, 2);
+            } else {
+                $middlewareClass = $middlewareDefinition;
+                $argument = null;
+            }
+    
+            // Verifică și obține middleware-ul din registru
+            if (!MiddlewareRegistry::exists($middlewareClass)) {
+                throw new \Exception("Middleware $middlewareClass not found in registry.");
+            }
+    
+            $middlewareInstance = MiddlewareRegistry::getMiddlewareInstance($middlewareClass);
+    
+            if (!is_object($middlewareInstance) || !method_exists($middlewareInstance, 'handle')) {
+                throw new \Exception("Middleware $middlewareClass is not a valid object or does not have a handle method.");
+            }
+    
+            // Elimină middleware-ul procesat din listă după ce este determinat
+            array_shift($middlewares);
+    
+            // Dacă există un argument suplimentar, execută cu el
+            if ($argument !== null) {
+                return $middlewareInstance->handle($request, function($request) use ($handler) {
+                    return $handler($request);
+                }, $argument);
+            }
+    
+            // Execută middleware-ul fără argumente suplimentare
+            return $middlewareInstance->handle($request, function($request) use ($handler) {
+                return $handler($request);
+            });
+        };
+    
+        return $handler($request);
+    }
+    
+    private function executeRouteAction($action, $params) {
+        if (is_callable($action))
+            return call_user_func_array($action, $params);
+    
+        if (is_string($action))
+            return $this->resolveControllerAction($action, $params);
+
+        throw new Exception("Invalid action format: $action");
+        return $this->handleNotFound();
+    }
+    
 
     // Funcție pentru a gestiona resurse CSS
     protected function handleCSSResource(string $resourceName, bool $isMinified): void {
@@ -144,102 +390,6 @@ class Router {
         return '/themes/' . $themeConfig['active_theme'] . '/assets/bootstrap/js/';
     }
 
-    public function dispatch($request) {
-        $method = $request->server('REQUEST_METHOD');
-        $uri = strtok($request->server('REQUEST_URI'), '?'); // Extrage URI-ul fără query string
-    
-        // Detectează și servește resurse statice
-        if (preg_match('/([\w\-\/]+)(\.min)?\.(css|js|jpg|jpeg|png|gif|svg|woff|woff2|ttf|eot)$/i', $uri, $matches)) {
-            $resourceName = $matches[1];
-            $isMinified = !empty($matches[2]); // Verifică dacă este minificat
-            $extension = $matches[3];
-    
-            if ($extension === 'js' && preg_match('/bootstrap\.(.*?)\.js$/i', $uri, $files)) {
-                $this->handleJSResource(str_replace(".js", "", $files[0]), $isMinified);
-                return;
-            }
-    
-            switch ($extension) {
-                case 'css':
-                    $this->handleCSSResource($resourceName, $isMinified);
-                    break;
-                case 'js':
-                    $this->handleJSResource($resourceName, $isMinified);
-                    break;
-                case 'woff':
-                case 'woff2':
-                case 'ttf':
-                case 'eot':
-                    $this->handleFontResource($resourceName);
-                    break;
-                default:
-                    $this->serveStaticResource($resourceName . '.' . $extension);
-                    break;
-            }
-            return;
-        }
-    
-        // Parcurge toate rutele pentru metoda specificată
-        foreach ($this->routes[$method] as $route) {
-            $params = $this->match($route->getUri(), $uri);
-            if(!$params) continue;
-            
-            // Verifică parametrii din URI ��i apelează ac��iunea controller-ului
-            if ($params !== false || strcasecmp($route->getUri(), $uri) === 0) {
-                // Execută middleware-urile asociate rutei
-                $response = $this->handleMiddlewares($route, $request);
-    
-                if ($response instanceof Response) {
-                    return $response;
-                }
-    
-                // Verifică tipul acțiunii
-                if ($route->getAction() instanceof \Closure) {
-                    // Dacă este o funcție anonimă, o execută direct
-                    return call_user_func_array($route->getAction(), [] ?? $params);
-                }
-
-                if (is_string($route->getAction()) && $params !== false) {
-                    return $this->resolveControllerAction($route->getAction(), []);
-                }
-                
-                if (is_string($route->getAction()) && $params !== true) {
-                    return $this->resolveControllerAction($route->getAction(), $params);
-                }
-            }
-        }
-
-        // Nu s-a găsit nicio rută; returnează 404
-        return $this->handleNotFound();
-    }
-    
-    private function handleMiddlewares($route, $request) {
-        foreach ($route->getMiddleware() as $middleware) {
-            $middlewareInstance = app()->make($middleware);
-    
-            $response = $middlewareInstance->handle($request, function($request) use ($route) {
-                return $this->resolveControllerAction($route->getAction(), $request);
-            });
-    
-            if ($response instanceof Response) {
-                return $response;
-            }
-        }
-        return null;
-    }
-    
-    private function executeRouteAction($action, $params) {
-        if (is_callable($action))
-            return call_user_func_array($action, $params);
-    
-        if (is_string($action))
-            return $this->resolveControllerAction($action, $params);
-
-        throw new Exception("Invalid action format: $action");
-        return $this->handleNotFound();
-    }
-    
-
     protected function cacheContent(string $content, string $cachedFile): void {
         file_put_contents($cachedFile, $content);
     }
@@ -271,6 +421,62 @@ class Router {
     protected function resolveControllerAction(string $action, array $params = []) {
         // Desparte acțiunea în numele controllerului și al metodei
         list($controller, $method) = explode('@', $action);
+    
+        // Creează numele complet al clasei controllerului cu namespace
+        $controllerClass = "STS\\app\\Controllers\\$controller";
+    
+        // Verifică dacă clasa controllerului există
+        if (!class_exists($controllerClass)) {
+            throw new ControllerNotFoundException("Controller not found: $controllerClass");
+        }
+    
+        // Obține instanța controllerului din container (pentru a gestiona dependențele)
+        $controllerInstance = Container::getInstance()->make($controllerClass);
+    
+        // Verifică dacă metoda există în instanța controllerului
+        if (!method_exists($controllerInstance, $method)) {
+            throw new MethodNotFoundException("Method not found: $controllerClass@$method");
+        }
+    
+        // Aplică middleware-urile definite în controler
+        $this->applyControllerMiddleware($controllerInstance, $method);
+    
+        // Creează instanța de Request
+        $request = Container::getInstance()->make('STS\\core\\Http\\Request');
+    
+        // Dacă nu sunt parametri suplimentari, trimite obiectul Request ca parametru
+        if (empty($params)) {
+            $params = [$request];
+        }
+    
+        // Apelează metoda controllerului cu parametrii specificați
+        return call_user_func_array([$controllerInstance, $method], $params);
+    }
+
+    /**
+     * 
+     * Varianta buna
+     */
+    /*protected function applyControllerMiddleware($controllerInstance, string $method) {
+        // Obține middleware-urile definite la nivel de controler
+        $globalMiddlewares = $controllerInstance->getMiddleware(); // Folosește metoda getMiddleware()
+        
+        // Obține middleware-urile pentru acțiunea specifică
+        $actionMiddlewares = $controllerInstance->getMiddlewareForActions()[$method] ?? [];
+
+        // Combină middleware-urile globale și cele pentru acțiunea specifică
+        $middlewares = array_merge($globalMiddlewares, $actionMiddlewares);
+
+        // Aplică middleware-urile combinate
+        foreach ($middlewares as $middleware) {
+            $this->middleware($middleware);
+        }
+    }*/
+
+    /*
+    protected function resolveControllerAction(string $action, array $params = []) {
+        // Desparte acțiunea în numele controllerului și al metodei
+        list($controller, $method) = explode('@', $action);
         
         // Creează numele complet al clasei controllerului cu namespace
         $controllerClass = "STS\\app\\Controllers\\$controller";
@@ -297,8 +503,8 @@ class Router {
         }
 
         // Apelează metoda controllerului cu parametrii specificați
-        return call_user_func_array([$controllerInstance, $method], $params);
-    }
+        return call_user_func_array([$controllerInstance, $method], [$params]);
+    }*/
     
     protected function handleNotFound(): void
     {

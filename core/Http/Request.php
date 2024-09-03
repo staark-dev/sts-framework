@@ -7,17 +7,20 @@ class Request {
     protected array $post;
     protected array $server;
     protected array $headers;
+    protected array $sessions;
 
     public function __construct(
         array $get, 
         array $post, 
         array $server, 
-        array $headers
+        array $headers,
+        array $sessions
     ) {
         $this->get = $get;
         $this->post = $post;
         $this->server = $server;
         $this->headers = $headers;
+        $this->sessions = $sessions;
     }
 
     // Funcția statică capture pentru a inițializa clasa cu datele din cererea curentă
@@ -26,8 +29,9 @@ class Request {
         $post = $_POST;
         $server = $_SERVER;
         $headers = function_exists('getallheaders') ? getallheaders() : [];
+        $sessions = session_status() === PHP_SESSION_ACTIVE ? $_SESSION : [];
 
-        return new self($get, $post, $server, $headers);
+        return new self($get, $post, $server, $headers, $sessions);
     }
 
     // Funcții de acces pentru a obține datele din cerere
@@ -47,6 +51,10 @@ class Request {
         $key = strtolower($key);
         $headers = array_change_key_case($this->headers, CASE_LOWER);
         return $key === null ? $this->headers : ($headers[$key] ?? $default);
+    }
+
+    public function session(?string $key = null, $default = null) {
+        return $key === null ? $this->sessions : ($this->sessions[$key] ?? $default);
     }
 
     // Alte metode utile, precum method(), uri(), etc.

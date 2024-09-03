@@ -4,6 +4,7 @@
 <div class="container">
     <h1>Welcome to the Starter Template System (STS)!</h1>
 
+    {{ Auth::status() }}
     @auth
         <p>You are logged in as {{ Auth::name() }}.</p>
     @endauth

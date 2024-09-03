@@ -180,3 +180,12 @@ if (!function_exists('session')) {
         return $_SESSION[$key] ?? null; // Returnează valoarea cheii specificate sau null dacă nu există
     }
 }
+
+if (!function_exists('add_log')) {
+    function add_log($message, $level = 'info') {
+        $logFilePath = storage_path('logs/'. date('Y-m-d'). '.log');
+        $logMessage = '['. date('Y-m-d H:i:s'). '] ['. strtoupper($level). '] '. $message. PHP_EOL;
+        file_put_contents($logFilePath, $logMessage, FILE_APPEND);
+        return false;
+    }
+}

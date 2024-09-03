@@ -31,7 +31,7 @@ class GlobalVariables
             'csrf_token' => fn() => csrf_token(),
             'auth_user' => fn() => $_SESSION['user'] ?? null,
             'base_url' => fn() => rtrim((isset($_SERVER['HTTPS']) ? "https" : "http") . "://{$_SERVER['HTTP_HOST']}", '/'),
-            'auth' => fn() => isset($_SESSION['logged_in']) ? $_SESSION['logged_in'] : 'Guest',
+            'auth' => fn() => Auth::isLoggedIn(),
             'route' => fn($name, $params = []) => app('Router')->route($name, $params),
             'url' => fn($path = '') => url($path),
 

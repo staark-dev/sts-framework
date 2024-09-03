@@ -17,6 +17,12 @@ use STS\core\Facades\Translate;
 use STS\core\Security\Validator;
 use STS\core\Auth\AuthService;
 use STS\core\Facades\Auth;
+use STS\core\Facades\ResponseFacade; // Importă corect clasa
+use STS\core\Http\Response;
+
+use STS\core\Http\MiddlewareRegistry;
+use \STS\core\Http\Middleware\AuthMiddleware;
+use \STS\core\Http\Middleware\CheckPermissionMiddleware;
 
 final class AppServiceProvider extends ServiceProvider
 {
@@ -46,6 +52,7 @@ final class AppServiceProvider extends ServiceProvider
         $this->registerValidators();
         $this->registerHashed();
         $this->registerAuthService();
+        $this->registerMiddlewareRegistry();
 
         $this->container->singleton('auth.service', function() {
             return new \STS\core\Auth\AuthService();
@@ -59,6 +66,15 @@ final class AppServiceProvider extends ServiceProvider
         });
     }
     
+    private function registerMiddlewareRegistry(): void
+    {
+        // Creează instanțele middleware
+        $guestMiddlewareInstance = new \STS\core\Http\Middleware\GuestOnlyMiddleware();
+
+        $this->container->singleton('guest_only', function() {
+            return new \STS\core\Http\Middleware\GuestOnlyMiddleware();
+        });
+    }
 
     private function registerConfig(): void
     {
@@ -155,8 +171,8 @@ final class AppServiceProvider extends ServiceProvider
 
     private function registerRequest(): void
     {
-        $this->container->bind('Request', function () {
-            return new \STS\core\Http\Request();
+        $this->container->singleton('Request', function () {
+            return \STS\core\Http\Request::collection();
         });
     }
 
@@ -223,6 +239,9 @@ final class AppServiceProvider extends ServiceProvider
         date_default_timezone_set($config['default_timezone']);
         locale_set_default($config['locale']);
 
+        // Verifică dacă userul este logat și înregistrează-l în container
+        Auth::checkUserSession();
+
         $this->endtime = microtime(true);
 
         // Setări pentru Themes
@@ -256,7 +275,5 @@ final class AppServiceProvider extends ServiceProvider
             error_log("Eroare la boot: " . $e->getMessage());
             throw new \Exception("Theme configuration not found in the container.");
         }
-
-        //Auth::loginUser();
     }
 }

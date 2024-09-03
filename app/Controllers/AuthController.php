@@ -13,7 +13,15 @@ use STS\core\Facades\Auth;
 
 class AuthController extends Controller
 {
-    public function login(): void
+    public array $middleware = [];
+
+    public array $middlewareForActions = [
+        'login'             => ['auth'],
+        'create'            => ['auth'],
+        'forgotPassword'    => ['auth'],
+    ];
+
+    public function login(Request $request): void
     {
         $this->view('auth/login', 'Login');
     }
@@ -36,6 +44,7 @@ class AuthController extends Controller
             new Response(json_encode($validationResult->errors()), 200);
             $this->view('auth/login', 'Login', $validationResult->errors());
             return ResponseFacade::redirect('/auth/login', 200);
+            exit();
         }
 
         // Obține emailul și parola din datele validate
@@ -44,8 +53,8 @@ class AuthController extends Controller
 
         // Verifică dacă utilizatorul există în baza de date
         $user = Database::table('users')
-            ->where('email', '=', 'ionuzcostin@gmail.com')
-            ->orWhere('username', '=', 'ionuzcostin@gmail.com')
+            ->where('email', '=', $email_or_user)
+            ->orWhere('username', '=', $email_or_user)
             ->limit(1)
             ->get();
     
@@ -54,6 +63,7 @@ class AuthController extends Controller
             new Response(json_encode(['error' => 'Invalid credentials.']), 200);
             $this->view('auth/login', 'Login', $validationResult->errors());
             return ResponseFacade::redirect('/auth/login', 200);
+            exit();
         }
 
         // Verifică parola utilizând clasa Hash
@@ -61,6 +71,7 @@ class AuthController extends Controller
             new Response(json_encode(['error' => 'Invalid credentials.']), 200);
             $this->view('auth/login', 'Login', $validationResult->errors());
             return ResponseFacade::redirect('/auth/login', 200);
+            exit();
         }
 
         $data = [
@@ -82,9 +93,10 @@ class AuthController extends Controller
         // Debugging pentru sesiuni
         error_log("Sesiune setată: " . print_r($_SESSION, true));
 
-        Auth::loginUser();
+        Auth::loginUser($user[0]);
         session_write_close();
         return ResponseFacade::redirect('/', 200);
+        exit();
     }
 
     public function create(): void
@@ -134,9 +146,9 @@ class AuthController extends Controller
         }
     }
 
-    public function profile(): void
+    public function profile(int|string $user_id): Response
     {
-
+        return new Response('Profile page for user' . $user_id, 200);
     }
 
     public function forgotPassword(): Response
@@ -151,8 +163,12 @@ class AuthController extends Controller
 
     public function logout(): Response
     {
+        // Autentificarea dezactivată, returnează un răspuns de succes
         Auth::logout();
-        new Response('User logged out successfully', 200);
-        return ResponseFacade::redirect('/', 200);
+
+        // Elimină sesiunea ��i redirec��ionează c
+        return new Response('User logged out successfully', 200, [
+            'Location' => '/'
+        ]);
     }
 }

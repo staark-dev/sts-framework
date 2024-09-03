@@ -1,6 +1,6 @@
 <?php declare(strict_types=1); class_exists('STS\core\Themes\ThemeManager') or exit; ?>
 <?php
-/* Cached on 2024-09-01 20:23:38 */
+/* Cached on 2024-09-02 14:37:46 */
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -77,6 +77,7 @@
 <div class="container">
     <h1>Welcome to the Starter Template System (STS)!</h1>
 
+    <?= call_user_func_array([\STS\core\Facades\Auth::class, 'status'], []); ?>
     <?php if($this->variables['auth']()): ?>
         <p>You are logged in as <?= call_user_func_array([\STS\core\Facades\Auth::class, 'name'], []); ?>.</p>
     <?php endif; ?>
