@@ -15,5 +15,15 @@ return [
     \STS\core\Http\Middleware\VerifyPostRequestMiddleware::class,
     \STS\core\Http\Middleware\AuthMiddleware::class,
     \STS\core\Http\Middleware\CheckPermissionMiddleware::class,
-    // Adaugă alte middleware-uri globale aici...
+
+    /*
+    |--------------------------------------------------------------------------
+    | Middleware-uri Personalizate
+    |--------------------------------------------------------------------------
+    |
+    | Utilizatorii pot adăuga aici propriile middleware-uri personalizate.
+    |
+    */
+
+    \STS\app\Middleware\CustomMiddlewareExample::class,
 ];
