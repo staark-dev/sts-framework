@@ -13,6 +13,9 @@ class HttpKernel {
 
     public function __construct(Container $container) {
         $this->container = $container;
+// Înregistrează middleware-urile din configurație
+            MiddlewareRegistry::registerConfigMiddleware();
+        
         $this->middleware = $this->loadGlobalMiddleware();
     }
 
