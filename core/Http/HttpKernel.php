@@ -4,6 +4,7 @@ namespace STS\core\Http;
 use STS\core\Container;
 use STS\core\Http\Request;
 use STS\core\Http\Response;
+use STS\core\Http\MiddlewareRegistry;
 use \ReflectionClass;
 use \ReflectionMethod;
 
